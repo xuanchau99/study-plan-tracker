@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Plan Tracker UI</title>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; }
+        .console-log {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            height: 200px;
+            border-radius: 8px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        .btn-heartbeat {
+            font-size: 18px;
+            padding: 15px 30px;
+            border-radius: 50px;
+            transition: all 0.3s;
+        }
+        .btn-heartbeat:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+<div class="container py-5">
+    <div class="row g-4">
+        <!-- Cột trái: Client -->
+        <div class="col-md-6">
+            <div class="card p-4 h-100 border-0 shadow-sm">
+                <h3 class="mb-4 text-primary fw-bold">📚 Lộ trình: Giao tiếp công việc trong 30 ngày</h3>
+                
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Tiến độ hôm nay (Mục tiêu: 130 phút)</label>
+                    <div class="progress" style="height: 30px; border-radius: 20px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success fs-6 fw-bold" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="130">0/130</div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-auto">
+                    <button id="btnHeartbeat" class="btn btn-primary btn-heartbeat fw-bold w-100 shadow">
+                        ❤️ Gửi Heartbeat (1 phút)
+                    </button>
+                    <small class="text-muted d-block mt-3">Mô phỏng hành động HTTP POST tới /api/v1/tracking/heartbeat</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột phải: System Monitor -->
+        <div class="col-md-6">
+            <h4 class="mb-3 text-secondary fw-bold">🖥️ System Monitor</h4>
+            
+            <!-- Thẻ 1: Redis -->
+            <div class="card mb-3 border-danger border-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-danger mb-1 fw-bold">⚡ Redis In-Memory</h5>
+                        <p class="text-muted mb-0">Total minutes tracked in Hash</p>
+                    </div>
+                    <span class="fs-1 fw-bold text-danger"><span id="redisValue">0</span><small class="fs-6">p</small></span>
+                </div>
+            </div>
+
+            <!-- Thẻ 2: PostgreSQL -->
+            <div class="card mb-3 border-info border-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-info mb-1 fw-bold">🐘 PostgreSQL Database</h5>
+                        <p class="text-muted mb-0">DailyTask Status (Updated once reached target)</p>
+                    </div>
+                    <span id="pgStatus" class="badge bg-secondary fs-4">TODO</span>
+                </div>
+            </div>
+
+            <!-- Thẻ 3: RabbitMQ Console -->
+            <div class="card">
+                <div class="card-header bg-dark text-white fw-bold">🐇 RabbitMQ Event Listener</div>
+                <div class="card-body p-0">
+                    <div id="consoleLog" class="console-log">
+                        > Khởi tạo Listener...<br>
+                        > Đang chờ DailyGoalAchievedEvent...<br>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ID Task cần có trong DB. Yêu cầu user tạo 1 template qua Postman trước.
+    const TASK_ID = 1; 
+    let currentMins = 0;
+    const MAX_MINS = 130;
+    let isDone = false;
+
+    const btnHeartbeat = document.getElementById('btnHeartbeat');
+    const progressBar = document.getElementById('progressBar');
+    const redisValue = document.getElementById('redisValue');
+    const pgStatus = document.getElementById('pgStatus');
+    const consoleLog = document.getElementById('consoleLog');
+
+    function updateLog(message, isSystem = false) {
+        const time = new Date().toLocaleTimeString();
+        const color = isSystem ? '#ffcc00' : '#00ff00';
+        consoleLog.innerHTML += `<span style="color: ${color}">[${time}] ${message}</span><br>`;
+        consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    btnHeartbeat.addEventListener('click', async () => {
+        if (isDone) {
+            updateLog('Lộ trình hôm nay đã hoàn thành!', true);
+            return;
+        }
+
+        // Disable button tạm thời
+        btnHeartbeat.disabled = true;
+
+        try {
+            // Gọi API Backend
+            const response = await fetch('http://localhost:8080/api/v1/tracking/heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ taskId: TASK_ID, studiedMinutes: 1 })
+            });
+
+            if (response.ok || response.status === 202) {
+                // Tăng state
+                currentMins += 1;
+                
+                // Cập nhật DOM ProgressBar
+                const percent = Math.min((currentMins / MAX_MINS) * 100, 100);
+                progressBar.style.width = percent + '%';
+                progressBar.innerText = `${currentMins}/${MAX_MINS}`;
+                
+                // Cập nhật thẻ Redis
+                redisValue.innerText = currentMins;
+
+                // Nếu đạt mốc 130 phút
+                if (currentMins >= MAX_MINS && !isDone) {
+                    isDone = true;
+                    // Đổi trạng thái UI của Database
+                    pgStatus.className = 'badge bg-success fs-4';
+                    pgStatus.innerText = 'DONE';
+                    
+                    // Giả lập RabbitMQ event hiển thị trên Frontend
+                    setTimeout(() => {
+                        updateLog(`[AMQP] Đã Consume Message thành công!`);
+                        updateLog(`🎉 Đã gửi thông báo chúc mừng hoàn thành lộ trình cho Task ID: ${TASK_ID}!`);
+                    }, 300);
+                }
+            } else {
+                updateLog('API Lỗi: ' + response.status, true);
+            }
+        } catch (error) {
+            updateLog('Mạng Lỗi: Không thể kết nối Backend', true);
+            console.error(error);
+        } finally {
+            if (!isDone) btnHeartbeat.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
