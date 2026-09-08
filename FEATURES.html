@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ Thống Trắc Nghiệm Hiệu Suất Cao</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; padding: 2rem; max-width: 800px; margin: 0 auto; color: #333; }
+        h1, h2, h3 { color: #24292e; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+        ul { padding-left: 2em; }
+        li { margin-bottom: 0.5em; }
+        code { background-color: rgba(27,31,35,0.05); padding: 0.2em 0.4em; border-radius: 3px; font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 85%; }
+    </style>
+</head>
+<body>
+    <h1>HỆ THỐNG TRẮC NGHIỆM HIỆU SUẤT CAO</h1>
+    <p>Dự án này là một nền tảng thi và trắc nghiệm hiện đại, hiệu suất cao, được xây dựng với kiến trúc có khả năng mở rộng tốt để xử lý lưu lượng truy cập lớn và người dùng đồng thời.</p>
+    
+    <h2>🚀 Công Nghệ & Kiến Trúc Cốt Lõi</h2>
+    <ul>
+        <li><strong>Frontend</strong>: React + Vite + CSS thuần (Giao diện Glassmorphism & Chế độ tối).</li>
+        <li><strong>Backend</strong>: Spring Boot 3 + Spring Security (JWT Stateless).</li>
+        <li><strong>Cơ Sở Dữ Liệu Chính</strong>: PostgreSQL (Sử dụng <code>JSONB</code> để lưu trữ dữ liệu linh hoạt).</li>
+        <li><strong>Bộ Nhớ Đệm & Xử Lý Đồng Thời</strong>: Redis (Sử dụng để lưu tự động các câu trả lời với tốc độ siêu nhanh và độ trễ thấp).</li>
+        <li><strong>Message Broker</strong>: RabbitMQ (Sử dụng cho hệ thống chấm điểm bất đồng bộ dựa trên sự kiện, giúp ngăn chặn nghẽn cơ sở dữ liệu khi có lượng lớn bài thi được nộp cùng lúc).</li>
+        <li><strong>Cơ Sở Hạ Tầng</strong>: Docker & Docker Compose để triển khai cục bộ nhanh chóng các dịch vụ (Redis, RabbitMQ, PostgreSQL).</li>
+    </ul>
+
+    <h2>✨ Tính Năng Nổi Bật</h2>
+    <ol>
+        <li><strong>Giao Diện Người Dùng Cao Cấp</strong>: 
+            <ul>
+                <li>Thiết kế glassmorphism đẹp mắt, thân thiện với mọi thiết bị (responsive).</li>
+                <li>Hiệu ứng chuyển động mượt mà và phản hồi tương tác theo thời gian thực.</li>
+            </ul>
+        </li>
+        <li><strong>Xác Thực Bảo Mật</strong>: 
+            <ul>
+                <li>Kiểm soát truy cập dựa trên vai trò (Quản trị viên và Người dùng).</li>
+                <li>Token JWT bảo mật, không lưu trạng thái (stateless), tự động đăng xuất khi hết hạn.</li>
+            </ul>
+        </li>
+        <li><strong>Quản Lý Bài Thi Nâng Cao (Quản trị viên)</strong>: 
+            <ul>
+                <li>Tạo hàng loạt bài thi và câu hỏi mẫu.</li>
+                <li>Lưu trữ dữ liệu động sử dụng <code>JSONB</code> của PostgreSQL để lưu các loại câu hỏi khác nhau (hình ảnh, tùy chọn, văn bản) mà không cần thay đổi cấu trúc cơ sở dữ liệu.</li>
+            </ul>
+        </li>
+        <li><strong>Lưu Tự Động Theo Thời Gian Thực (Người dùng)</strong>: 
+            <ul>
+                <li>Câu trả lời được đẩy vào Redis Hash với độ phức tạp <code>O(1)</code> ngay khi người dùng chọn, đảm bảo không mất dữ liệu khi cúp điện mà không cần ghi liên tục vào cơ sở dữ liệu trên ổ cứng.</li>
+            </ul>
+        </li>
+        <li><strong>Hệ Thống Chấm Điểm Dựa Trên Sự Kiện</strong>: 
+            <ul>
+                <li>Khi người dùng nộp bài, yêu cầu chấm điểm được đưa vào hàng đợi RabbitMQ.</li>
+                <li>Consumer ở backend sẽ lấy câu trả lời từ Redis, chấm điểm dựa trên dữ liệu từ PostgreSQL, lưu <code>ExamResult</code> (kết quả thi), và trả về bằng chứng chi tiết của bài làm.</li>
+            </ul>
+        </li>
+        <li><strong>Kiểm Tra Lịch Sử Chi Tiết</strong>: 
+            <ul>
+                <li>Quản trị viên có thể xem bằng chứng chi tiết bài làm của người dùng trong một hộp thoại (modal) tương tác, làm nổi bật câu trả lời đúng và đáp án người dùng đã chọn.</li>
+            </ul>
+        </li>
+    </ol>
+</body>
+</html>

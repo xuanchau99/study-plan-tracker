@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Luồng Xử Lý & Các Tính Năng Hệ Thống</title>
+    <!-- Add FontAwesome for Mermaid Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; padding: 2rem; max-width: 1000px; margin: 0 auto; color: #333; }
+        h1, h2, h3 { color: #24292e; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-top: 2em; }
+        ul, ol { padding-left: 2em; }
+        li { margin-bottom: 0.5em; }
+        code { background-color: rgba(27,31,35,0.05); padding: 0.2em 0.4em; border-radius: 3px; font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 85%; }
+        .mermaid { margin: 2rem 0; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Luồng Xử Lý & Các Tính Năng Hệ Thống</h1>
+    <p>Tài liệu này trình bày chi tiết các tính năng cốt lõi của Hệ Thống Trắc Nghiệm Hiệu Suất Cao và theo dõi luồng xử lý từ Frontend tới các thành phần Backend.</p>
+
+    <h2>1. Xác Thực & Phân Quyền Theo Vai Trò (RBAC)</h2>
+    <p><strong>Mô tả:</strong> Hệ thống sử dụng xác thực JWT (JSON Web Token) không lưu trạng thái (stateless). Người dùng có thể đăng ký và đăng nhập. Quản trị viên (Admin) có quyền truy cập vào các trang quản lý, trong khi người dùng bình thường chỉ có quyền làm bài thi.</p>
+    <p><strong>Luồng xử lý:</strong></p>
+    <ul>
+        <li><strong>Frontend:</strong>
+            <ul>
+                <li>Component: <code>frontend/src/pages/Login.jsx</code></li>
+                <li>Luồng: Người dùng nhập thông tin -&gt; gọi API <code>fetchApi('/auth/login')</code> hoặc <code>/auth/register</code>.</li>
+                <li>Trạng thái: Khi thành công, lưu <code>token</code>, <code>role</code> (vai trò), và <code>username</code> vào <code>localStorage</code> và cập nhật state toàn cục <code>user</code> trong <code>App.jsx</code>.</li>
+            </ul>
+        </li>
+        <li><strong>Backend:</strong>
+            <ul>
+                <li>Controller: <code>AuthController.java</code> (<code>/api/v1/auth/login</code>, <code>/api/v1/auth/register</code>)</li>
+                <li>Service: <code>AuthService.java</code> (mã hóa mật khẩu, xác minh danh tính).</li>
+                <li>Security/Token: <code>JwtUtil.java</code> (tạo mã JWT có hiệu lực 24 giờ).</li>
+                <li>Interceptor: <code>JwtAuthenticationFilter.java</code> chặn mọi yêu cầu cần bảo mật, trích xuất JWT và xác thực nó qua <code>CustomUserDetailsService.java</code>.</li>
+            </ul>
+        </li>
+    </ul>
+    <p><strong>Sơ đồ luồng:</strong></p>
+    <div class="mermaid">
+flowchart TD
+    User(("fa:fa-user Người dùng"))
+
+    subgraph Client ["fa:fa-desktop Frontend React"]
+        UI["Login.jsx"]
+    end
+
+    subgraph API ["fa:fa-server Backend Spring Boot"]
+        Controller{"AuthController.java"}
+        Service["AuthService.java"]
+        JWT["JwtUtil.java"]
+    end
+
+    subgraph Data ["fa:fa-database Hệ Cơ Sở Dữ Liệu"]
+        DB[("fa:fa-database PostgreSQL")]
+    end
+
+    User --&gt;|"Nhập User/Pass"| UI
+    UI --&gt;|"POST /api/v1/auth/login"| Controller
+    Controller --&gt;|"Xử lý logic"| Service
+    Service --&gt;|"Truy vấn User"| DB
+    DB -.->|"Trả về Data"| Service
+    Service &lt;--&gt;|"Tạo và Ký Token"| JWT
+    Service -.->|"AuthResponse Token"| Controller
+    Controller -.->|"200 OK"| UI
+    UI --&gt;|"Lưu LocalStorage"| Client
+    </div>
+
+    <h2>2. Tạo Bài Thi Hàng Loạt</h2>
+    <p><strong>Mô tả:</strong> Quản trị viên có thể tạo nhiều bài thi và câu hỏi cùng lúc. Backend tận dụng kiểu dữ liệu JSONB của PostgreSQL để lưu trữ động nhiều câu hỏi và lựa chọn mà không bị giới hạn cứng bởi cấu trúc bảng.</p>
+    <p><strong>Luồng xử lý:</strong></p>
+    <ul>
+        <li><strong>Frontend:</strong>
+            <ul>
+                <li>Component: <code>frontend/src/pages/AdminDashboard.jsx</code> (Tab Quizzes)</li>
+                <li>Luồng: Admin nhập số lượng câu hỏi -&gt; sinh dữ liệu mẫu thành JSON -&gt; gọi <code>fetchApi('/quizzes')</code>.</li>
+            </ul>
+        </li>
+        <li><strong>Backend:</strong>
+            <ul>
+                <li>Controller: <code>QuizController.java</code> (<code>/api/v1/quizzes</code>)</li>
+                <li>Service: <code>QuizService.java</code> (duyệt qua payload, khởi tạo các entity <code>Quiz</code> và <code>Question</code>).</li>
+                <li>Entity/DB: Trường <code>details</code> trong <code>Question.java</code> dùng <code>@JdbcTypeCode(SqlTypes.JSON)</code> để lưu trữ trực tiếp cấu trúc đáp án và câu hỏi dưới dạng JSONB trong PostgreSQL.</li>
+                <li>Repository: <code>QuizRepository.java</code> lưu dữ liệu có cấu trúc lồng nhau này một cách tối ưu.</li>
+            </ul>
+        </li>
+    </ul>
+    <p><strong>Sơ đồ luồng:</strong></p>
+    <div class="mermaid">
+flowchart TD
+    Admin(("fa:fa-user-tie Admin"))
+
+    subgraph Client ["fa:fa-desktop Frontend React"]
+        UI["AdminDashboard.jsx"]
+    end
+
+    subgraph API ["fa:fa-server Backend Spring Boot"]
+        Controller{"QuizController.java"}
+        Service["QuizService.java"]
+        Repo["QuizRepository.java"]
+    end
+
+    subgraph Data ["fa:fa-database Hệ Cơ Sở Dữ Liệu"]
+        DB[("fa:fa-database PostgreSQL JSONB")]
+    end
+
+    Admin --&gt;|"Nhập số lượng & Bấm Tạo"| UI
+    UI --&gt;|"Sinh mảng JSON mẫu"| UI
+    UI --&gt;|"POST /api/v1/quizzes"| Controller
+    Controller --&gt;|"createQuiz"| Service
+    Service --&gt;|"Khởi tạo Entities"| Repo
+    Repo --&gt;|"Lưu Quiz và Questions"| DB
+    DB -.->|"Lưu JSONB thành công"| Repo
+    Repo -.->|"Saved Entity"| Service
+    Service -.->|"QuizDto"| Controller
+    Controller -.->|"200 OK"| UI
+    </div>
+
+    <h2>3. Lưu Tự Động Siêu Nhanh (Theo thời gian thực)</h2>
+    <p><strong>Mô tả:</strong> Khi người dùng chọn đáp án trong lúc thi, lựa chọn của họ được lưu lại ngay lập tức. Để tránh tình trạng khóa database và độ trễ cao, tính năng này sử dụng bộ nhớ đệm Redis.</p>
+    <p><strong>Luồng xử lý:</strong></p>
+    <ul>
+        <li><strong>Frontend:</strong>
+            <ul>
+                <li>Component: <code>frontend/src/pages/TakeQuiz.jsx</code></li>
+                <li>Luồng: User chọn đáp án -&gt; <code>handleSelectOption</code> -&gt; gọi <code>fetchApi('/exams/{quizId}/questions/{questionId}/answers')</code> bất đồng bộ.</li>
+            </ul>
+        </li>
+        <li><strong>Backend:</strong>
+            <ul>
+                <li>Controller: <code>ExamController.java</code></li>
+                <li>Service: <code>ExamService.java</code> (phương thức <code>autoSaveAnswer</code>).</li>
+                <li>Caching (Redis): Đáp án được đẩy ngay lập tức vào Redis Hash bằng <code>StringRedisTemplate.opsForHash().put(key, questionId, answer)</code>. Cấu trúc khóa (key) là <code>exam:{quizId}:user:{userId}</code>.</li>
+            </ul>
+        </li>
+    </ul>
+    <p><strong>Sơ đồ luồng:</strong></p>
+    <div class="mermaid">
+flowchart LR
+    User(("fa:fa-user Người dùng"))
+
+    subgraph Client ["fa:fa-desktop Frontend"]
+        UI["TakeQuiz.jsx"]
+    end
+
+    subgraph API ["fa:fa-server Backend"]
+        Controller{"ExamController.java"}
+        Service["ExamService.java"]
+    end
+
+    subgraph Cache ["fa:fa-bolt Bộ nhớ đệm"]
+        Redis[("fa:fa-server Redis Cache")]
+    end
+
+    User --&gt;|"Click chọn 1 đáp án"| UI
+    UI --&gt;|"Update State hiển thị ngay"| UI
+    UI --&gt;|"POST /answers (Ngầm)"| Controller
+    Controller --&gt;|"autoSaveAnswer"| Service
+    Service --&gt;|"opsForHash.put"| Redis
+    Redis -.->|"Ghi O1 thành công"| Service
+    Service -.-> Controller
+    Controller -.->|"200 OK"| UI
+    </div>
+
+    <h2>4. Chấm Điểm Bất Đồng Bộ (Dựa trên Sự Kiện)</h2>
+    <p><strong>Mô tả:</strong> Khi người dùng nộp bài, hệ thống không bắt họ phải chờ quá trình chấm điểm. Nó trả về ngay trạng thái 202 Accepted và đưa tác vụ chấm điểm vào hàng đợi tin nhắn (Message Queue) RabbitMQ để xử lý ngầm.</p>
+    <p><strong>Luồng xử lý:</strong></p>
+    <ul>
+        <li><strong>Frontend:</strong>
+            <ul>
+                <li>Component: <code>frontend/src/pages/TakeQuiz.jsx</code></li>
+                <li>Luồng: User bấm "Submit" -&gt; gọi <code>fetchApi('/exams/{quizId}/submit')</code> -&gt; hiển thị màn hình Thành công.</li>
+            </ul>
+        </li>
+        <li><strong>Backend (Producer):</strong>
+            <ul>
+                <li>Controller: <code>ExamController.java</code></li>
+                <li>Service: <code>ExamService.java</code> (phương thức <code>submitExam</code>). Tạo một sự kiện <code>ExamSubmittedEvent</code> và gửi nó lên RabbitMQ thông qua <code>RabbitTemplate.convertAndSend()</code>.</li>
+            </ul>
+        </li>
+        <li><strong>Backend (Consumer):</strong>
+            <ul>
+                <li>Service: <code>ExamProcessorService.java</code>. Annotation <code>@RabbitListener</code> sẽ nhận sự kiện này bất đồng bộ.</li>
+                <li>Luồng:
+                    <ol>
+                        <li>Lấy toàn bộ đáp án của user từ Redis Hash với tốc độ O(1).</li>
+                        <li>So sánh đáp án của user với <code>correctAnswer</code> trong PostgreSQL.</li>
+                        <li>Tính toán điểm số và map các đáp án đã chọn thành một đối tượng <code>evidence</code> (bằng chứng).</li>
+                        <li>Lưu <code>ExamResult</code> (bao gồm <code>evidence</code> dạng JSONB) xuống Database.</li>
+                        <li>Dọn dẹp cache tạm trong Redis.</li>
+                    </ol>
+                </li>
+            </ul>
+        </li>
+    </ul>
+    <p><strong>Sơ đồ luồng:</strong></p>
+    <div class="mermaid">
+flowchart TD
+    subgraph Client ["fa:fa-desktop Frontend"]
+        UI["TakeQuiz.jsx"]
+    end
+
+    subgraph API ["fa:fa-server Backend"]
+        Controller{"ExamController"}
+        Service{"ExamService"}
+        Processor["ExamProcessorService"]
+    end
+
+    subgraph Broker ["fa:fa-envelope Message Queue"]
+        RMQ{{"fa:fa-exchange-alt RabbitMQ"}}
+    end
+
+    subgraph Storage ["fa:fa-database Lưu trữ"]
+        Redis[("fa:fa-server Redis")]
+        DB[("fa:fa-database PostgreSQL")]
+    end
+
+    UI --&gt;|"Bấm Nộp Bài"| Controller
+    Controller --&gt;|"Tạo Event"| Service
+    Service --&gt;|"Gửi Message"| RMQ
+    Service -.->|"Trả về ngay lập tức"| Controller
+    Controller -.->|"202 ACCEPTED"| UI
+
+    RMQ --&gt;|"Lắng nghe RabbitListener"| Processor
+    Processor --&gt;|"Lấy toàn bộ đáp án"| Redis
+    Redis -.->|"Map đáp án O1"| Processor
+    Processor --&gt;|"Lấy đáp án đúng"| DB
+    DB -.->|"Quiz Entity"| Processor
+    Processor --&gt;|"Chấm điểm và Tạo JSON"| Processor
+    Processor --&gt;|"Lưu ExamResult"| DB
+    Processor --&gt;|"Dọn dẹp"| Redis
+    </div>
+
+    <h2>5. Theo Dõi & Lịch Sử Bài Làm (Dành cho Admin)</h2>
+    <p><strong>Mô tả:</strong> Quản trị viên có thể xem chính xác những đáp án mà người dùng đã chọn để kiểm tra. Phần lịch sử (evidence) được lấy từ cột JSONB và render thành giao diện trực quan.</p>
+    <p><strong>Luồng xử lý:</strong></p>
+    <ul>
+        <li><strong>Frontend:</strong>
+            <ul>
+                <li>Component: <code>frontend/src/pages/AdminDashboard.jsx</code> (Tab Results)</li>
+                <li>Luồng: Lấy danh sách kết quả. Khi bấm "View Details", nó gọi <code>fetchApi('/quizzes/{id}')</code> để lấy cấu trúc đề thi gốc, sau đó đắp dữ liệu <code>evidence</code> (JSON) lên form giao diện, làm nổi bật các câu đúng/sai.</li>
+            </ul>
+        </li>
+        <li><strong>Backend:</strong>
+            <ul>
+                <li>Controller: <code>ExamController.java</code> (<code>/api/v1/exams/results</code>) -&gt; trả về danh sách kết quả kèm JSONB <code>evidence</code>.</li>
+                <li>Repository: <code>ExamResultRepository.java</code>.</li>
+            </ul>
+        </li>
+    </ul>
+    <p><strong>Sơ đồ luồng:</strong></p>
+    <div class="mermaid">
+flowchart TD
+    Admin(("fa:fa-user-tie Admin"))
+
+    subgraph Client ["fa:fa-desktop Frontend"]
+        UI["AdminDashboard.jsx"]
+    end
+
+    subgraph API ["fa:fa-server Backend"]
+        ExamC{"ExamController"}
+        QuizC{"QuizController"}
+    end
+
+    subgraph Data ["fa:fa-database Database"]
+        DB[("fa:fa-database PostgreSQL")]
+    end
+
+    Admin --&gt;|"Mở Tab Results"| UI
+    UI --&gt;|"GET /exams/results"| ExamC
+    ExamC --&gt;|"Lấy lịch sử"| DB
+    DB -.->|"ExamResults kèm JSONB evidence"| ExamC
+    ExamC -.->|"Mảng kết quả"| UI
+    
+    Admin --&gt;|"Click View Details"| UI
+    UI --&gt;|"GET /quizzes/id"| QuizC
+    QuizC --&gt;|"Lấy cấu trúc đề thi"| DB
+    DB -.->|"Quiz Entity"| QuizC
+    QuizC -.->|"Câu hỏi, Options, Đáp án đúng"| UI
+    
+    UI --&gt;|"Render Form"| UI
+    UI -.->|"Hiển thị Modal Glassmorphism"| Admin
+    </div>
+
+    <!-- Initialize Mermaid -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+</html>
