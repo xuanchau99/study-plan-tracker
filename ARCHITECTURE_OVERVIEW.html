@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Overview - Senior Spring Boot Perspective</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #475569;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --accent: #10b981;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .header h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+
+        .feature-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .feature-card h2 {
+            color: var(--primary);
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 1rem 0;
+        }
+
+        .tag {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .tag.pattern {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .problem-solution {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            background: #f1f5f9;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .problem-solution div h3 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            color: #b91c1c;
+        }
+
+        .problem-solution div:last-child h3 {
+            color: var(--accent);
+        }
+
+        code {
+            background-color: #f1f5f9;
+            color: #db2777;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .problem-solution {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>High-Performance System Architecture</h1>
+        <p>Phân tích thiết kế hệ thống QuizMaster qua góc nhìn của Senior Spring Boot Developer</p>
+    </div>
+
+    <!-- Feature 1 -->
+    <div class="feature-card">
+        <h2>⚡ 1. Xử Lý Chấm Điểm Bất Đồng Bộ (Event-Driven Architecture)</h2>
+        <div class="tech-tags">
+            <span class="tag">Spring AMQP</span>
+            <span class="tag">RabbitMQ</span>
+            <span class="tag pattern">Event-Driven Pattern</span>
+            <span class="tag pattern">Fire-and-Forget</span>
+        </div>
+        <p>Hệ thống thi trắc nghiệm thường có đặc thù là lượng người dùng <strong>nộp bài cùng một thời điểm rất lớn</strong> (ví dụ: khi hết giờ làm bài). Nếu chấm điểm đồng bộ (Synchronous), Database sẽ bị quá tải bởi hàng nghìn câu lệnh <code>SELECT</code> và <code>INSERT</code> cùng lúc, dẫn đến timeout và sập hệ thống.</p>
+        
+        <div class="problem-solution">
+            <div>
+                <h3>❌ Cách làm thông thường (Junior)</h3>
+                <p>Nhận request -> Chạy vòng lặp tính điểm -> Truy vấn DB liên tục -> Lưu DB -> Trả về kết quả 200 OK. Connection Pool sẽ bị cạn kiệt ngay lập tức dưới tải cao (High Load).</p>
+            </div>
+            <div>
+                <h3>✅ Thiết kế tối ưu (Senior)</h3>
+                <p>Sử dụng <strong>Message Broker (RabbitMQ)</strong>. Khi nhận request nộp bài, Controller chỉ đóng gói payload thành <code>ExamSubmittedEvent</code>, đẩy vào Queue và lập tức trả về HTTP <code>202 ACCEPTED</code>. Người dùng không phải chờ đợi. Dưới background, một <code>@RabbitListener</code> (Consumer Worker) sẽ âm thầm pop message ra và tiến hành lấy đáp án từ Redis, chấm điểm, rồi lưu xuống PostgreSQL với tốc độ được kiểm soát, bảo vệ DB khỏi lưu lượng đột biến (Traffic Spike).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 2 -->
+    <div class="feature-card">
+        <h2>🚀 2. Lưu Tự Động Tránh Rớt Mạng (High Throughput Write Caching)</h2>
+        <div class="tech-tags">
+            <span class="tag">Spring Data Redis</span>
+            <span class="tag">Redis Hash</span>
+            <span class="tag pattern">Write-Behind Caching (biến thể)</span>
+        </div>
+        <p>Để đảm bảo không mất bài làm khi rớt mạng, tính năng "Auto-save" yêu cầu mỗi lần click đáp án đều phải gửi request lên server. Nếu có 10,000 học sinh đang làm bài thi 50 câu, hệ thống sẽ phải chịu 500,000 requests ghi vào cơ sở dữ liệu trong thời gian ngắn.</p>
+        
+        <div class="problem-solution">
+            <div>
+                <h3>❌ Cách làm thông thường (Junior)</h3>
+                <p>Tạo bảng tạm <code>user_answers</code> trong RDBMS (MySQL/PostgreSQL). Mỗi lần user click, thực hiện lệnh <code>UPDATE/INSERT</code> xuống ổ đĩa cứng. Gây nghẽn Disk I/O trầm trọng.</p>
+            </div>
+            <div>
+                <h3>✅ Thiết kế tối ưu (Senior)</h3>
+                <p>Sử dụng <strong>In-Memory Cache (Redis)</strong> làm nơi lưu trữ trung gian. Dùng cấu trúc dữ liệu <strong>Redis Hash</strong> (HSET/HGET) qua <code>StringRedisTemplate.opsForHash()</code> với key là <code>exam:{quizId}:user:{userId}</code>. Việc ghi vào RAM cho phép đạt độ trễ siêu thấp (Low Latency) với độ phức tạp <code>O(1)</code>. Chỉ khi nộp bài (submit) thì Worker mới gom toàn bộ đáp án từ Redis xuống PostgreSQL 1 lần duy nhất, giảm thiểu tới 98% thao tác ghi DB.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 3 -->
+    <div class="feature-card">
+        <h2>🛠 3. Lược Đồ Dữ Liệu Động Khắc Phục Anti-Pattern EAV</h2>
+        <div class="tech-tags">
+            <span class="tag">PostgreSQL JSONB</span>
+            <span class="tag">Hibernate 6 @JdbcTypeCode</span>
+            <span class="tag pattern">Schema-less Data Model</span>
+        </div>
+        <p>Câu hỏi trắc nghiệm có cấu trúc rất đa dạng (câu hỏi văn bản, câu hỏi có hình ảnh, câu hỏi có 2 lựa chọn, 4 lựa chọn, hoặc thậm chí là điền khuyết).</p>
+        
+        <div class="problem-solution">
+            <div>
+                <h3>❌ Cách làm thông thường (Junior)</h3>
+                <p>Tạo bảng <code>questions</code> (id, text), và bảng <code>options</code> (id, question_id, text, is_correct) rồi nối bảng (JOIN) khổng lồ. Hoặc sử dụng EAV (Entity-Attribute-Value) anti-pattern khiến câu query cực kỳ phức tạp và chậm chạp.</p>
+            </div>
+            <div>
+                <h3>✅ Thiết kế tối ưu (Senior)</h3>
+                <p>Tận dụng khả năng hỗ trợ NoSQL của <strong>PostgreSQL thông qua kiểu dữ liệu JSONB</strong>. Trong Spring Boot, chỉ cần ánh xạ field <code>details</code> sang một class POJO (chứa options, imageUrl, text...) bằng annotation <code>@JdbcTypeCode(SqlTypes.JSON)</code> của Hibernate 6. Cơ sở dữ liệu vừa được chuẩn hóa tốt, vừa có sự linh hoạt của MongoDB, truy xuất chỉ tốn 1 lần đọc mà không cần JOIN.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 4 -->
+    <div class="feature-card">
+        <h2>🔒 4. Mở Rộng Dễ Dàng Với Stateless Authentication</h2>
+        <div class="tech-tags">
+            <span class="tag">Spring Security 6</span>
+            <span class="tag">JSON Web Token (JWT)</span>
+            <span class="tag pattern">Stateless Session</span>
+        </div>
+        <p>Hệ thống hiện đại cần sẵn sàng chạy đa máy chủ (Horizontal Scaling) qua Docker/Kubernetes đằng sau một Load Balancer.</p>
+        
+        <div class="problem-solution">
+            <div>
+                <h3>❌ Cách làm thông thường (Junior)</h3>
+                <p>Sử dụng mặc định <code>HttpSession</code> của Tomcat để lưu trạng thái đăng nhập. Khi tăng scale lên 3 server, request của user lọt vào server B sẽ bắt đăng nhập lại vì session nằm ở server A (nếu không setup Sticky Session phức tạp).</p>
+            </div>
+            <div>
+                <h3>✅ Thiết kế tối ưu (Senior)</h3>
+                <p>Tắt hoàn toàn cơ chế Session management trong Spring Security (<code>SessionCreationPolicy.STATELESS</code>). Bọc một <code>JwtAuthenticationFilter</code> extends `OncePerRequestFilter`. Xác thực dựa trên Token đính kèm trong HTTP Header <code>Authorization</code>. Các Nodes Backend trở thành thuần API, giúp hệ thống Scale Out (tăng số lượng Container) vô hạn mà không cần đồng bộ trạng thái.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 5 -->
+    <div class="feature-card">
+        <h2>📈 5. Chống Lỗi Kinh Điển N+1 Query Bằng EntityGraph</h2>
+        <div class="tech-tags">
+            <span class="tag">Spring Data JPA</span>
+            <span class="tag pattern">Data Fetching Optimization</span>
+        </div>
+        <p>Lấy dữ liệu bài thi (Quiz) kèm theo danh sách các câu hỏi (Questions) bên trong nó.</p>
+        
+        <div class="problem-solution">
+            <div>
+                <h3>❌ Cách làm thông thường (Junior)</h3>
+                <p>Khai báo <code>@OneToMany(fetch = FetchType.LAZY)</code>. Khi gọi API `GET /quizzes/1`, Hibernate thực thi 1 câu lệnh lấy Quiz, sau đó lặp lại thực thi N câu lệnh lấy Question (Lỗi N+1 Query). Hiệu suất giảm thê thảm.</p>
+            </div>
+            <div>
+                <h3>✅ Thiết kế tối ưu (Senior)</h3>
+                <p>Không dùng <code>FetchType.EAGER</code> (gây phình to bộ nhớ). Thay vào đó, sử dụng annotation <code>@EntityGraph(attributePaths = {"questions"})</code> trực tiếp trên Repository Interface. Hibernate sẽ tự động tối ưu bằng cách tạo một câu lệnh <code>LEFT OUTER JOIN</code> duy nhất xuống cơ sở dữ liệu để kéo tất cả data lên bộ nhớ trong 1 round-trip.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
