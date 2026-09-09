@@ -84,4 +84,17 @@ public class ExamController {
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(results);
     }
+
+    /**
+     * Retrieves exam results for the currently authenticated user.
+     * Used by the Frontend to display scores and "Retake" buttons.
+     */
+    @GetMapping("/my-results")
+    public ResponseEntity<java.util.List<com.quiz.dto.ExamResultDto>> getMyResults(@AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        java.util.List<com.quiz.dto.ExamResultDto> results = examResultRepository.findByUserId(userId).stream()
+                .map(r -> new com.quiz.dto.ExamResultDto(r.getId(), r.getUserId(), r.getQuizId(), r.getScore(), r.getSubmittedAt(), null)) // Skip evidence for summary to save bandwidth
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(results);
+    }
 }

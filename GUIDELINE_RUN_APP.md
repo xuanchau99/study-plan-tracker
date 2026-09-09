@@ -56,8 +56,18 @@ Hệ thống sử dụng PostgreSQL, Redis, và RabbitMQ. Chúng ta dùng Docker
 1. Mở trình duyệt và truy cập `http://localhost:5173`.
 2. **Đăng Ký Tài Khoản:** Bấm vào "Register" và tạo một tài khoản mới (ví dụ: username: `admin`, password: `password`).
 3. **Quyền Quản Trị Viên (Admin):** Mặc định, người dùng mới sẽ có vai trò `USER`. Để thử nghiệm tính năng Admin:
-   - Kết nối vào cơ sở dữ liệu PostgreSQL cục bộ của bạn (URL: `jdbc:postgresql://localhost:5433/quiz_db`, User: `postgres`, Password: `postgres`).
+   - Kết nối vào cơ sở dữ liệu PostgreSQL cục bộ của bạn (URL: `jdbc:postgresql://localhost:5432/quiz_db`, User: `admin`, Password: `password`).
    - Mở bảng `users` và sửa cột `role` từ `0` thành `1` (tương ứng với `ADMIN`).
    - Đăng nhập lại để truy cập **Admin Dashboard**.
 4. **Tạo Dữ Liệu:** Với tư cách Admin, sử dụng tab "Quizzes" để tạo hàng loạt bài thi mẫu.
 5. **Làm Bài Thi:** Đăng nhập lại bằng tài khoản User bình thường để làm bài thi mẫu và trải nghiệm tính năng lưu tự động siêu nhanh cùng hệ thống chấm điểm bất đồng bộ!
+
+---
+
+## Bước 5: Quản Trị RabbitMQ (Tùy Chọn)
+Để theo dõi các hàng đợi (Queues) và quá trình xử lý chấm điểm ngầm của hệ thống, bạn có thể truy cập vào giao diện quản lý của RabbitMQ:
+1. Mở trình duyệt và truy cập: `http://localhost:15672`
+2. Đăng nhập bằng tài khoản:
+   - Username: `admin`
+   - Password: `password`
+3. Tại đây, bạn chuyển sang tab **Queues** để xem biểu đồ tin nhắn theo thời gian thực (Real-time message rates) khi có người dùng nộp bài thi.

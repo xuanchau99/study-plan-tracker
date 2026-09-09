@@ -44,6 +44,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Stateless JWT doesn't need CSRF protection
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/**").permitAll() // Open to all (Login/Register)
+                .requestMatchers("/ws/**").permitAll() // Allow WebSocket initial connections
                 .anyRequest().authenticated() // Protect all other API endpoints
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

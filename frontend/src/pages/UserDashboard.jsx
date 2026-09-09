@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, BookOpen, PlayCircle, Layers, Loader2 } from 'lucide-react';
+import { LogOut, BookOpen, PlayCircle, RotateCcw, Layers, Loader2, CheckCircle2 } from 'lucide-react';
 import { fetchApi } from '../api';
+import NotificationBell from '../components/NotificationBell';
 
 /**
  * User Dashboard Component.
@@ -10,11 +11,12 @@ import { fetchApi } from '../api';
 export default function UserDashboard({ user, setUser }) {
   const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState([]);
+  const [myResults, setMyResults] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch available quizzes when the component mounts
+  // Fetch available quizzes and user's results when the component mounts
   useEffect(() => {
-    fetchQuizzes();
+    Promise.all([fetchQuizzes(), fetchMyResults()]).finally(() => setLoading(false));
   }, []);
 
   /**
@@ -26,8 +28,15 @@ export default function UserDashboard({ user, setUser }) {
       setQuizzes(data);
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchMyResults = async () => {
+    try {
+      const data = await fetchApi('/exams/my-results');
+      setMyResults(data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -68,11 +77,12 @@ export default function UserDashboard({ user, setUser }) {
       </div>
 
       <div className="main-content">
-        <div className="page-header">
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1 className="title">Welcome, {user.username}</h1>
             <p className="subtitle">Ready to test your knowledge today?</p>
           </div>
+          <NotificationBell />
         </div>
 
         {loading ? (
@@ -81,18 +91,61 @@ export default function UserDashboard({ user, setUser }) {
           </div>
         ) : (
           <div className="quiz-grid">
-            {quizzes.map(quiz => (
-              <div key={quiz.id} className="glass-panel quiz-card">
-                <h3>{quiz.title}</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{quiz.description}</p>
-                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16 }}>
-                  <span className="badge">{quiz.questions?.length || 0} Questions</span>
-                  <button className="btn-accent" onClick={() => navigate(`/quiz/${quiz.id}`)} style={{ padding: '8px 16px' }}>
-                    <PlayCircle size={16} /> Start
-                  </button>
+            {quizzes.map(quiz => {
+              // Find all results for this quiz
+              const resultsForQuiz = myResults.filter(r => r.quizId === quiz.id);
+              // Get the most recent result if any
+              const latestResult = resultsForQuiz.length > 0 
+                ? resultsForQuiz.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))[0] 
+                : null;
+              
+              const isTaken = !!latestResult;
+              const cardStyle = isTaken ? { border: '1px solid #10B981', background: 'rgba(16, 185, 129, 0.05)' } : {};
+
+              return (
+                <div key={quiz.id} className="glass-panel quiz-card" style={cardStyle}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <h3>{quiz.title}</h3>
+                    {isTaken && <CheckCircle2 color="#10B981" size={20} />}
+                  </div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{quiz.description}</p>
+                  
+                  {isTaken && (
+                    <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', color: '#10B981' }}>
+                      Highest Score: {Math.max(...resultsForQuiz.map(r => r.score))} / {quiz.questions?.length * 10}
+                      <br/>
+                      <span style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-secondary)' }}>
+                        Last taken: {new Date(latestResult.submittedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16 }}>
+                    <span className="badge">{quiz.questions?.length || 0} Questions</span>
+                    <button 
+                      className={isTaken ? "" : "btn-accent"} 
+                      onClick={() => navigate(`/quiz/${quiz.id}`)} 
+                      style={{ 
+                        padding: '8px 16px', 
+                        background: isTaken ? 'transparent' : undefined,
+                        border: isTaken ? '1px solid #10B981' : undefined,
+                        color: isTaken ? '#10B981' : undefined,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        borderRadius: '8px'
+                      }}>
+                      {isTaken ? (
+                        <><RotateCcw size={16} /> Retake</>
+                      ) : (
+                        <><PlayCircle size={16} /> Start</>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             
             {quizzes.length === 0 && (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-secondary)' }}>

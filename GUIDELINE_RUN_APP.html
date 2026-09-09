@@ -76,13 +76,41 @@
         <li><strong>Đăng Ký Tài Khoản:</strong> Bấm vào "Register" và tạo một tài khoản mới (ví dụ: username: <code>admin</code>, password: <code>password</code>).</li>
         <li><strong>Quyền Quản Trị Viên (Admin):</strong> Mặc định, người dùng mới sẽ có vai trò <code>USER</code>. Để thử nghiệm tính năng Admin:
             <ul>
-                <li>Kết nối vào cơ sở dữ liệu PostgreSQL cục bộ của bạn (URL: <code>jdbc:postgresql://localhost:5433/quiz_db</code>, User: <code>postgres</code>, Password: <code>postgres</code>).</li>
+                <li>Kết nối vào cơ sở dữ liệu PostgreSQL cục bộ của bạn (URL: <code>jdbc:postgresql://localhost:5432/quiz_db</code>, User: <code>admin</code>, Password: <code>password</code>).</li>
                 <li>Mở bảng <code>users</code> và sửa cột <code>role</code> từ <code>0</code> thành <code>1</code> (tương ứng với <code>ADMIN</code>).</li>
                 <li>Đăng nhập lại để truy cập <strong>Admin Dashboard</strong>.</li>
             </ul>
         </li>
         <li><strong>Tạo Dữ Liệu:</strong> Với tư cách Admin, sử dụng tab "Quizzes" để tạo hàng loạt bài thi mẫu.</li>
         <li><strong>Làm Bài Thi:</strong> Đăng nhập lại bằng tài khoản User bình thường để làm bài thi mẫu và trải nghiệm tính năng lưu tự động siêu nhanh cùng hệ thống chấm điểm bất đồng bộ!</li>
+    </ol>
+
+    <hr>
+
+    <h2>Bước 5: Quản Trị RabbitMQ (Tùy Chọn)</h2>
+    <p>Để theo dõi các hàng đợi (Queues) và quá trình xử lý chấm điểm ngầm của hệ thống, bạn có thể truy cập vào giao diện quản lý của RabbitMQ:</p>
+    <ol>
+        <li>Mở trình duyệt và truy cập: <code>http://localhost:15672</code></li>
+        <li>Đăng nhập bằng tài khoản:
+            <ul>
+                <li>Username: <code>admin</code></li>
+                <li>Password: <code>password</code></li>
+            </ul>
+        </li>
+        <li>Tại đây, bạn chuyển sang tab <strong>Queues</strong> để xem biểu đồ tin nhắn theo thời gian thực (Real-time message rates) khi có người dùng nộp bài thi.</li>
+    </ol>
+
+    <hr>
+
+    <h2>Bước 6: Thử Nghiệm Sức Chịu Tải (Stress Test / Load Test)</h2>
+    <p>Để chứng minh kiến trúc hệ thống hoạt động hoàn hảo dưới áp lực cao, chúng tôi đã tích hợp sẵn một công cụ <strong>Load Tester</strong> chạy thẳng trên trình duyệt.</p>
+    <ol>
+        <li>Đảm bảo rằng Backend và Frontend đều đang chạy (hoàn tất Bước 2 & 3).</li>
+        <li>Mở trình duyệt và truy cập: <a href="http://localhost:5173/load_tester.html" target="_blank">http://localhost:5173/load_tester.html</a></li>
+        <li>Tại giao diện Load Tester, nhập số lượng người dùng bạn muốn mô phỏng (ví dụ: <strong>200</strong> hoặc <strong>500</strong>).</li>
+        <li>Bấm <strong>Bắt Đầu Thực Hiện</strong>. Kịch bản sẽ tự động tạo người dùng ảo, lấy Token và bắn hàng trăm request nộp bài cùng một lúc về Server.</li>
+        <li><strong>Kết quả mong đợi:</strong> Mặc dù bị "dội bom" request, Server sẽ phản hồi lại toàn bộ 200 request chỉ trong vài giây (HTTP 202) mà không hề quá tải Database, nhờ vào cơ chế hàng đợi RabbitMQ.</li>
+        <li><em>Mẹo:</em> Hãy mở song song tab <strong>Admin Dashboard</strong> (http://localhost:5173). Khi Load Test chạy xong, bạn sẽ thấy chuông thông báo (Notification Bell) nhảy số liên tục do Background Worker đang chấm điểm và trả kết quả về thông qua WebSocket!</li>
     </ol>
 </body>
 </html>

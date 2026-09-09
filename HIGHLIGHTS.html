@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizMaster Pro - Những Tính Năng Độc Đáo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #8b5cf6;
+            --primary-glow: rgba(139, 92, 246, 0.5);
+            --secondary: #10b981;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.1), transparent 25%);
+            color: var(--text-main);
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+
+        .card p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tech-badge {
+            background: rgba(255, 255, 255, 0.05);
+            color: #a78bfa;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid rgba(167, 139, 250, 0.2);
+        }
+
+        .implementation {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1.25rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        .implementation h4 {
+            color: #34d399;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .implementation p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+
+        code {
+            font-family: 'Consolas', monospace;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            color: #f472b6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Những Điểm Nhấn Công Nghệ</h1>
+            <p>Tổng hợp những cơ chế, tính năng và thủ thuật tối ưu "đỉnh cao" mà chúng ta đã cùng nhau xây dựng trong dự án QuizMaster Pro.</p>
+        </div>
+
+        <div class="grid">
+            
+            <!-- Feature 1: Logging -->
+            <div class="card">
+                <div class="card-icon">📝</div>
+                <h2>Ghi Log Request/Response Chi Tiết Nhất & Cuốn Vòng Theo Ngày</h2>
+                <div class="tech-stack">
+                    <span class="tech-badge">Spring Boot Logging</span>
+                    <span class="tech-badge">RollingFileAppender</span>
+                    <span class="tech-badge">ContentCachingWrapper</span>
+                </div>
+                <p>Hệ thống tự động bắt và lưu toàn bộ API requests ra file giống hệt thư mục <code>storage/logs</code> của Laravel. Đặc biệt, nó được cấu hình cơ chế <strong>Rolling Policy</strong>: Tự động tách file mới mỗi ngày hoặc khi vượt quá 10MB, tự động xóa file cũ sau 30 ngày để chống tràn ổ cứng Server.</p>
+                <div class="implementation">
+                    <h4>Cách Triển Khai (Implementation)</h4>
+                    <p>Sử dụng <code>logback-spring.xml</code> thay vì <code>application.yml</code> để cấu hình xoay vòng file log. Đồng thời, tự viết một <code>ApiLoggingFilter</code> bọc bởi <code>ContentCachingRequestWrapper</code> và <code>ContentCachingResponseWrapper</code> để có thể đọc được chính xác 100% <strong>Payload gửi lên</strong> và <strong>Dữ liệu JSON Server trả về (Response)</strong> mà không làm hỏng stream của Request.</p>
+                </div>
+            </div>
+
+            <!-- Feature 2: Load Tester -->
+            <div class="card">
+                <div class="card-icon">💣</div>
+                <h2>Công Cụ "Dội Bom" Load Tester Tích Hợp</h2>
+                <div class="tech-stack">
+                    <span class="tech-badge">Vanilla JavaScript</span>
+                    <span class="tech-badge">Promise.allSettled</span>
+                </div>
+                <p>Không cần dùng phần mềm bên thứ 3 như JMeter, chúng ta đã tích hợp sẵn một trang Web Load Tester với UI xịn xò để kiểm tra sức chịu đựng của Server bằng cách bắn hàng trăm request nộp bài cùng lúc.</p>
+                <div class="implementation">
+                    <h4>Cách Triển Khai (Implementation)</h4>
+                    <p>Tạo một file <code>load_tester.html</code> đặt trực tiếp trong thư mục <code>public</code> của React để tránh lỗi CORS. Sử dụng JavaScript vòng lặp for kết hợp với <code>Promise.allSettled()</code> để kích hoạt đồng loạt hàng trăm hàm <code>fetch()</code> không đồng bộ, tạo ra lượng tải khủng khiếp lên máy chủ trong cùng 1 mili-giây.</p>
+                </div>
+            </div>
+
+            <!-- Feature 3: Pagination -->
+            <div class="card">
+                <div class="card-icon">📑</div>
+                <h2>Phân Trang Client-side Siêu Tốc</h2>
+                <div class="tech-stack">
+                    <span class="tech-badge">React Hooks</span>
+                    <span class="tech-badge">Array Slicing</span>
+                </div>
+                <p>Bảng dữ liệu ở màn hình Quản trị (Admin) sẽ không bao giờ bị tràn lề dù có hàng ngàn bản ghi, nhờ hệ thống phân trang cực nhanh, không có độ trễ chuyển trang.</p>
+                <div class="implementation">
+                    <h4>Cách Triển Khai (Implementation)</h4>
+                    <p>Thay vì bắt Backend phải đếm và chia trang bằng lệnh SQL <code>LIMIT/OFFSET</code> nặng nề, ta fetch toàn bộ dữ liệu 1 lần. Ở Frontend, dùng hàm <code>.slice((page-1)*10, page*10)</code> của Array để cắt mảng theo State <code>currentPage</code>. Việc này tận dụng sức mạnh CPU của trình duyệt Client, giảm hoàn toàn gánh nặng cho máy chủ RDBMS.</p>
+                </div>
+            </div>
+
+            <!-- Feature 4: RabbitMQ -->
+            <div class="card">
+                <div class="card-icon">🐇</div>
+                <h2>Chấm Điểm Bất Đồng Bộ (Async Worker)</h2>
+                <div class="tech-stack">
+                    <span class="tech-badge">RabbitMQ</span>
+                    <span class="tech-badge">Message Queue</span>
+                </div>
+                <p>Tính năng đắt giá nhất hệ thống. Giúp Server sống sót khi hàng ngàn sinh viên nộp bài thi cùng lúc khi tiếng chuông hết giờ vang lên.</p>
+                <div class="implementation">
+                    <h4>Cách Triển Khai (Implementation)</h4>
+                    <p>Khi User gọi API Submit, Server không chấm điểm ngay. Nó gói thông tin thành một JSON Message, ném vào <code>RabbitTemplate</code> rồi lập tức trả về <code>HTTP 202</code> cho User. Ở phía sau, một hàm đánh dấu <code>@RabbitListener</code> sẽ thong thả lấy từng Message ra chấm điểm. Cơ chế này gọi là "Fire and Forget" kết hợp "Queue Buffering".</p>
+                </div>
+            </div>
+
+            <!-- Feature 5: WebSockets -->
+            <div class="card">
+                <div class="card-icon">🔔</div>
+                <h2>Thông Báo Thời Gian Thực Kèm Trạng Thái</h2>
+                <div class="tech-stack">
+                    <span class="tech-badge">WebSockets (STOMP)</span>
+                    <span class="tech-badge">React State</span>
+                </div>
+                <p>Chuông thông báo ở thanh điều hướng sẽ tự động nảy số màu đỏ mỗi khi có bài thi được chấm xong, mà không cần người dùng phải bấm F5 tải lại trang web.</p>
+                <div class="implementation">
+                    <h4>Cách Triển Khai (Implementation)</h4>
+                    <p>Mở kết nối <code>SimpMessagingTemplate</code> song công (full-duplex). Khi RabbitMQ chấm bài xong, nó Push data qua Socket Channel. Trên Frontend, Component chuông báo duy trì một mảng trạng thái (Array State) cho các thông báo. Khi click vào nút <code>Mark all read</code>, React sẽ map qua mảng và đổi trạng thái Unread thành Read siêu mượt.</p>
+                </div>
+            </div>
+
+            <!-- Feature 6: Redis Cache -->
+            <div class="card">
+                <div class="card-icon">⚡</div>
+                <h2>Lưu Tạm Bài Làm Bằng RAM (Redis)</h2>
+                <div class="tech-stack">
+                    <span class="tech-badge">Redis Hash</span>
+                    <span class="tech-badge">Spring Data Redis</span>
+                </div>
+                <p>Mỗi khi học sinh tích chọn một đáp án A, B, C, D, đáp án được lưu tự động lên Server để lỡ có rớt mạng thì bài thi không bị mất, tốc độ lưu chỉ tính bằng micro-giây.</p>
+                <div class="implementation">
+                    <h4>Cách Triển Khai (Implementation)</h4>
+                    <p>Sử dụng cơ chế <strong>Write-Behind Cache</strong>. Ghi đáp án vào <code>Redis Hash</code> (được lưu trên RAM nên tốc độ đọc/ghi là O(1)). Không hề đụng chạm tới Database PostgreSQL cho đến khi người dùng bấm nút Nộp Bài chính thức. Triệt tiêu hoàn toàn sự nghẽn cổ chai (Disk I/O Bottleneck).</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

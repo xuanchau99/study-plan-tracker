@@ -37,10 +37,11 @@ export const fetchApi = async (endpoint, options = {}) => {
   }
   
   // Return null for responses with no body (e.g., 202 Accepted, 204 No Content)
-  if (response.status === 202 || response.status === 204) {
+  if (response.status === 202 || response.status === 204 || response.headers.get('content-length') === '0') {
     return null;
   }
   
-  // Parse and return JSON response
-  return response.json();
+  // Parse and return JSON response safely
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 };

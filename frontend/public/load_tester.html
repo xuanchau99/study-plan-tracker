@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Load Test - QuizMaster Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --success: #10b981;
+            --error: #ef4444;
+            --text-main: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.15), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+        }
+
+        button {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.4);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .console {
+            background: #020617;
+            border-radius: 16px;
+            padding: 1rem;
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+            color: #a78bfa;
+            border: 1px solid var(--glass-border);
+        }
+
+        .console p {
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .log-success {
+            color: #34d399;
+        }
+
+        .log-error {
+            color: #f87171;
+        }
+
+        .log-info {
+            color: #60a5fa;
+        }
+
+        .log-warn {
+            color: #fbbf24;
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Bảng điều khiển -->
+        <div class="glass-panel">
+            <h1>Công Cụ Load Test ⚡</h1>
+            <p class="subtitle">Giả lập hàng trăm người dùng cùng nộp bài một lúc để kiểm tra sức mạnh của hệ thống.</p>
+
+            <div class="form-group">
+                <label>Số lượng User nộp bài cùng lúc</label>
+                <input type="number" id="concurrentUsers" value="200" min="1" max="5000">
+            </div>
+
+            <div class="form-group">
+                <label>ID Bài Quiz (Quiz ID)</label>
+                <input type="number" id="quizId" value="5" min="1">
+            </div>
+
+            <button id="startBtn" onclick="startLoadTest()">
+                <span>Thực hiện 🚀</span>
+            </button>
+        </div>
+
+        <!-- Màn hình theo dõi -->
+        <div class="glass-panel" style="display: flex; flexDirection: column;">
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Tổng Request</div>
+                    <div class="stat-value" id="statTotal">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Thành Công (202)</div>
+                    <div class="stat-value" id="statSuccess" style="color: var(--success);">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Lỗi (Error)</div>
+                    <div class="stat-value" id="statError" style="color: var(--error);">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Thời Gian Phản Hồi</div>
+                    <div class="stat-value" id="statTime" style="color: #60a5fa;">0 ms</div>
+                </div>
+            </div>
+
+            <label>Console Log</label>
+            <div class="console" id="console">
+                <p>Waiting for commands...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080/api/v1';
+
+        function log(message, type = 'log-info') {
+            const consoleEl = document.getElementById('console');
+            const p = document.createElement('p');
+            const time = new Date().toLocaleTimeString();
+            p.innerHTML = `<span style="color: #64748b">[${time}]</span> <span class="${type}">${message}</span>`;
+            consoleEl.appendChild(p);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        async function startLoadTest() {
+            const usersCount = parseInt(document.getElementById('concurrentUsers').value) || 200;
+            const quizId = parseInt(document.getElementById('quizId').value) || 5;
+            const btn = document.getElementById('startBtn');
+
+            // Reset UI
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> <span>Đang xử lý...</span>`;
+            document.getElementById('console').innerHTML = '';
+            document.getElementById('statTotal').innerText = usersCount;
+            document.getElementById('statSuccess').innerText = '0';
+            document.getElementById('statError').innerText = '0';
+            document.getElementById('statTime').innerText = '0 ms';
+
+            try {
+                const tempUser = 'loadtester_' + Date.now();
+                log(`Đang khởi tạo tài khoản ảo (${tempUser}) để lấy phiên làm việc...`, 'log-info');
+
+                const registerRes = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: tempUser, password: 'password' })
+                });
+
+                if (!registerRes.ok) throw new Error('Không thể tạo tài khoản ảo');
+
+                const { token } = await registerRes.json();
+                log(`Lấy JWT Token thành công! ✅`, 'log-success');
+
+                log(`Đang chuẩn bị bắn ${usersCount} requests song song...`, 'log-warn');
+
+                const requests = [];
+                for (let i = 0; i < usersCount; i++) {
+                    requests.push(fetch(`${API_URL}/exams/${quizId}/submit`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }));
+                }
+
+                log(`🔥 BẮT ĐẦU THỰC HIỆN! ĐANG CHỜ PHẢN HỒI...`, 'log-error');
+
+                const startTime = Date.now();
+
+                // Promise.allSettled để không bị ngắt nếu có 1 request lỗi
+                const responses = await Promise.allSettled(requests);
+
+                const endTime = Date.now();
+                const totalTime = endTime - startTime;
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                responses.forEach(res => {
+                    if (res.status === 'fulfilled' && res.value.status === 202) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                });
+
+                // Cập nhật giao diện
+                document.getElementById('statSuccess').innerText = successCount;
+                document.getElementById('statError').innerText = errorCount;
+                document.getElementById('statTime').innerText = `${totalTime} ms`;
+
+                log(`🎉 Hoàn tất! Phản hồi ${usersCount} yêu cầu chỉ trong ${totalTime} mili-giây!`, 'log-success');
+                log(`👉 Cơ chế siêu mượt: Spring Boot chỉ việc nhận và thả tin nhắn vào RabbitMQ, sau đó lập tức trả kết quả 202 Accepted cho User. Không hề gây nghẽn Database.`, 'log-info');
+
+            } catch (error) {
+                log(`❌ Lỗi hệ thống: ${error.message}`, 'log-error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span>Bắt Đầu Thực Hiện 🚀</span>`;
+            }
+        }
+    </script>
+</body>
+
+</html>

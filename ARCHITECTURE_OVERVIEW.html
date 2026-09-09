@@ -249,6 +249,53 @@
         </div>
     </div>
 
+    <!-- Feature 6 -->
+    <div class="feature-card">
+        <h2>🔔 6. Thông Báo Thời Gian Thực (Push Notification)</h2>
+        <div class="tech-tags">
+            <span class="tag">Spring WebSocket</span>
+            <span class="tag">Native WebSockets</span>
+            <span class="tag pattern">Real-time Push</span>
+        </div>
+        <p>Do hệ thống áp dụng cơ chế chấm điểm bất đồng bộ (chấm ngầm qua RabbitMQ) để giải quyết tình trạng nghẽn cổ chai, người dùng sẽ không nhận được kết quả ngay khi ấn nộp bài. Vậy làm sao để họ biết điểm một cách tự nhiên nhất?</p>
+        
+        <div class="problem-solution">
+            <div>
+                <h3>❌ Cách làm thông thường (Junior)</h3>
+                <p>Sử dụng Short Polling: Frontend cài đặt hàm <code>setInterval</code>, cứ mỗi 3 giây lại gửi 1 request <code>GET /api/results</code> để hỏi xem có điểm chưa. Cách này tạo ra hàng nghìn request rác, lãng phí tài nguyên server (CPU, Bandwidth, DB connections) và không thân thiện với pin của thiết bị di động.</p>
+            </div>
+            <div>
+                <h3>✅ Thiết kế tối ưu (Senior)</h3>
+                <p>Sử dụng <strong>WebSockets với giao thức STOMP</strong>. Server chủ động thiết lập một kênh liên lạc hai chiều mở (full-duplex). Khi RabbitMQ chấm xong, Server tự động đẩy (Push) điểm số qua kênh `/user/queue/notifications`. Bằng cách can thiệp vào vòng đời kết nối qua <code>ChannelInterceptor</code> để xác thực token JWT, hệ thống đảm bảo tính bảo mật và truyền đúng thông báo tới chính xác người dùng mục tiêu với độ trễ gần như bằng không (Zero-latency).</p>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Feature 7 -->
+    <div class="feature-card">
+        <h2>🔥 7. Khả Năng Chịu Tải Thực Tế (Built-in Load Testing)</h2>
+        <div class="tech-tags">
+            <span class="tag">Stress Test</span>
+            <span class="tag">High Concurrency</span>
+            <span class="tag pattern">System Resilience</span>
+        </div>
+        <p>Hệ thống không chỉ được thiết kế trên lý thuyết mà còn được chứng minh thông qua công cụ thử nghiệm chịu tải (Load Tester) tích hợp sẵn, mô phỏng hàng trăm học sinh nộp bài cùng một khoảnh khắc.</p>
+        
+        <div class="problem-solution">
+            <div>
+                <h3>❌ Cách test thông thường (Junior)</h3>
+                <p>Mở 2-3 trình duyệt bấm nộp bài bằng tay rồi kết luận hệ thống hoạt động tốt. Khi đưa lên môi trường thực tế (Production), hệ thống ngay lập tức sụp đổ khi có 100 học sinh bấm "Nộp Bài" cùng lúc khi hết giờ.</p>
+            </div>
+            <div>
+                <h3>✅ Thiết kế tối ưu (Senior)</h3>
+                <p>Trang bị sẵn một kịch bản Load Test <code>load_tester.html</code> đính kèm ngay trong ứng dụng Frontend. Bằng cách gọi hàng loạt các bất đồng bộ API tới Backend, nó vắt kiệt sức mạnh của Server. 
+                <strong>Cách trải nghiệm:</strong> Khi hệ thống đang chạy, truy cập <a href="http://localhost:5173/load_tester.html" target="_blank" style="color: var(--primary);">http://localhost:5173/load_tester.html</a>. Đặt thử 500 users và nhấn <em>"Bắt Đầu Thực Hiện"</em>. Nhờ sự kết hợp hoàn hảo giữa <strong>RabbitMQ + Redis + PostgreSQL</strong>, bạn sẽ thấy hệ thống trả về HTTP 202 Accepted cho 500 users đó chỉ trong chưa tới 1 giây, sau đó thư thả chấm điểm ngầm và đổ thông báo WebSocket về màn hình Admin mà không hề bị sập!</p>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 </body>

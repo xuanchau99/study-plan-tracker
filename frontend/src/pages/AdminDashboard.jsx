@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Layers, PlusCircle, CheckCircle, AlertCircle, Loader2, FileText, Users, BarChart3 } from 'lucide-react';
 import { fetchApi } from '../api';
+import NotificationBell from '../components/NotificationBell';
 
 /**
  * Admin Dashboard Component.
@@ -13,8 +14,13 @@ export default function AdminDashboard({ user, setUser }) {
   
   // States for the Quiz Generator tab
   const [numQuestions, setNumQuestions] = useState(10);
+  const [quizTitle, setQuizTitle] = useState('');
   const [loadingGen, setLoadingGen] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // States for the Management tables (Quizzes, Users, Results)
   const [quizzes, setQuizzes] = useState([]);
@@ -46,6 +52,7 @@ export default function AdminDashboard({ user, setUser }) {
    * Refetch data whenever the admin switches tabs.
    */
   useEffect(() => {
+    setCurrentPage(1);
     if (activeTab === 'quizzes') fetchData('/quizzes', setQuizzes);
     if (activeTab === 'users') fetchData('/users', setUsers);
     if (activeTab === 'results') fetchData('/exams/results', setResults);
@@ -109,7 +116,7 @@ export default function AdminDashboard({ user, setUser }) {
       });
 
       const payload = {
-        title: `English Proficiency Test - ${numQuestions} Questions`,
+        title: quizTitle.trim() !== '' ? quizTitle : `English Proficiency Test - ${numQuestions} Questions`,
         description: `Auto-generated test focusing on grammar and vocabulary.`,
         questions
       };
@@ -127,6 +134,35 @@ export default function AdminDashboard({ user, setUser }) {
     }
   };
 
+  const renderPaginationControls = (totalItems) => {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (totalPages <= 1) return null;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, padding: '0 12px' }}>
+        <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+          Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
+        </span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button 
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => prev - 1)}
+            style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--border-color)', color: currentPage === 1 ? 'var(--text-secondary)' : 'var(--text-main)', borderRadius: 6, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+          >
+            Previous
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 'bold' }}>{currentPage} / {totalPages}</span>
+          <button 
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--border-color)', color: currentPage === totalPages ? 'var(--text-secondary)' : 'var(--text-main)', borderRadius: 6, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     if (activeTab === 'generator') {
       return (
@@ -136,6 +172,14 @@ export default function AdminDashboard({ user, setUser }) {
             Instantly create a new quiz filled with AI-generated questions. Perfect for testing system load.
           </p>
           <form onSubmit={handleGenerate}>
+            <div className="form-group">
+              <label>Quiz Title (Optional)</label>
+              <input 
+                type="text" className="input-field" 
+                placeholder="Leave blank to auto-generate"
+                value={quizTitle} onChange={e => setQuizTitle(e.target.value)} 
+              />
+            </div>
             <div className="form-group">
               <label>Number of Questions</label>
               <input 
@@ -178,7 +222,7 @@ export default function AdminDashboard({ user, setUser }) {
               </tr>
             </thead>
             <tbody>
-              {quizzes.map(q => (
+              {quizzes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(q => (
                 <tr key={q.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <td style={{ padding: 12 }}>{q.id}</td>
                   <td style={{ padding: 12, fontWeight: 500 }}>{q.title}</td>
@@ -188,6 +232,7 @@ export default function AdminDashboard({ user, setUser }) {
               ))}
             </tbody>
           </table>
+          {renderPaginationControls(quizzes.length)}
         </div>
       );
     }
@@ -205,7 +250,7 @@ export default function AdminDashboard({ user, setUser }) {
               </tr>
             </thead>
             <tbody>
-              {users.map(u => (
+              {users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(u => (
                 <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <td style={{ padding: 12 }}>{u.id}</td>
                   <td style={{ padding: 12, fontWeight: 500 }}>{u.username}</td>
@@ -216,6 +261,7 @@ export default function AdminDashboard({ user, setUser }) {
               ))}
             </tbody>
           </table>
+          {renderPaginationControls(users.length)}
         </div>
       );
     }
@@ -236,11 +282,35 @@ export default function AdminDashboard({ user, setUser }) {
               </tr>
             </thead>
             <tbody>
-              {results.map(r => (
+              {results.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(r => {
+                // Determine attempt number
+                const userQuizResults = results
+                  .filter(res => res.userId === r.userId && res.quizId === r.quizId)
+                  .sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+                const attemptNumber = userQuizResults.findIndex(res => res.id === r.id) + 1;
+                const isRetake = attemptNumber > 1;
+
+                return (
                 <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <td style={{ padding: 12 }}>{r.id}</td>
                   <td style={{ padding: 12 }}>User #{r.userId}</td>
-                  <td style={{ padding: 12 }}>Quiz #{r.quizId}</td>
+                  <td style={{ padding: 12 }}>
+                    Quiz #{r.quizId}
+                    {isRetake && (
+                      <span style={{ 
+                        marginLeft: 8, 
+                        fontSize: 10, 
+                        padding: '2px 6px', 
+                        borderRadius: 4, 
+                        background: 'rgba(245, 158, 11, 0.1)', 
+                        color: '#f59e0b', 
+                        border: '1px solid rgba(245, 158, 11, 0.2)',
+                        fontWeight: 'bold'
+                      }}>
+                        Retake #{attemptNumber - 1}
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: 12, fontWeight: 'bold', color: 'var(--accent-color)' }}>{r.score} points</td>
                   <td style={{ padding: 12 }}>
                     <button 
@@ -253,9 +323,10 @@ export default function AdminDashboard({ user, setUser }) {
                   </td>
                   <td style={{ padding: 12, color: 'var(--text-secondary)' }}>{new Date(r.submittedAt).toLocaleString()}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
+          {renderPaginationControls(results.length)}
         </div>
       );
     }
@@ -301,11 +372,12 @@ export default function AdminDashboard({ user, setUser }) {
       </div>
 
       <div className="main-content">
-        <div className="page-header">
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1 className="title">Admin Dashboard</h1>
             <p className="subtitle">Manage system resources and view statistics.</p>
           </div>
+          <NotificationBell />
         </div>
 
         {renderContent()}
