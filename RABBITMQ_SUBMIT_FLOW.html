@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ Giả Lập Luồng Nộp Bài RabbitMQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --success: #10b981;
+            --rabbitmq: #ff6600;
+            --redis: #ef4444;
+            --postgres: #336791;
+            --code-bg: #0b1120;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            z-index: 10;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 800px;
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 10;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #simBtn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #simBtn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
+        }
+
+        #simBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #status-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 28px;
+            text-align: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 60px 50px;
+            width: 100%;
+            max-width: 1400px;
+            position: relative;
+        }
+
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative;
+            z-index: 2;
+        }
+
+        .node.active-node {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 10px inset var(--accent-glow);
+            transform: scale(1.03) translateY(-5px);
+            z-index: 3;
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .node-header i {
+            font-size: 2rem;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .node-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .filepath {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .function-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .node p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .payload-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        
+        #node-react .node-header i { color: #61dafb; }
+        #node-react .function-name { color: #a5f3fc; }
+        #node-react .payload-box { color: #a5f3fc; }
+        
+        #node-controller .node-header i { color: #6db33f; }
+        #node-controller .function-name { color: #bbf7d0; }
+        #node-controller .payload-box { color: #bbf7d0; }
+
+        #node-rabbitmq .node-header i { color: var(--rabbitmq); }
+        #node-rabbitmq .function-name { color: #fdba74; }
+        #node-rabbitmq .payload-box { color: #fdba74; }
+
+        #node-redis .node-header i { color: var(--redis); }
+        #node-redis .function-name { color: #fca5a5; }
+        #node-redis .payload-box { color: #fca5a5; }
+
+        #node-postgres .node-header i { color: var(--postgres); }
+        #node-postgres .function-name { color: #93c5fd; }
+        #node-postgres .payload-box { color: #93c5fd; }
+
+        #node-websocket .node-header i { color: #a855f7; }
+        #node-websocket .function-name { color: #d8b4fe; }
+        #node-websocket .payload-box { color: #d8b4fe; }
+
+        #node-worker .node-header i { color: #3b82f6; }
+        #node-worker .function-name { color: #93c5fd; }
+        #node-worker .payload-box { color: #93c5fd; }
+
+        #node-react { grid-column: 1; grid-row: 1; }
+        #node-controller { grid-column: 2; grid-row: 1; }
+        #node-rabbitmq { grid-column: 3; grid-row: 1; }
+        
+        #node-websocket { grid-column: 1; grid-row: 2; }
+        #node-worker { grid-column: 2; grid-row: 2; border-color: rgba(168, 85, 247, 0.5); }
+        #node-redis { grid-column: 3; grid-row: 2; }
+
+        #node-postgres { grid-column: 2; grid-row: 3; }
+
+        .step-badge {
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            background: var(--accent);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--card-bg);
+            z-index: 10;
+        }
+
+        .dynamic-label {
+            position: absolute;
+            background: var(--bg-color);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 5;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+
+        .packet {
+            position: absolute;
+            width: 30px; 
+            height: 30px;
+            border-radius: 50%;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .packet::after {
+            content: '';
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 15px white;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Sơ Đồ Giả Lập Luồng Nộp Bài RabbitMQ</h1>
+    <p class="subtitle">Bấm nút chạy giả lập để quan sát đường đi của dữ liệu từ Frontend xuống Database trong kiến trúc bất đồng bộ.</p>
+
+    <div class="controls">
+        <button id="simBtn" onclick="simulateFlow()">
+            <i class="fa-solid fa-play"></i> Bắt đầu chạy giả lập Request
+        </button>
+        <div id="status-bar">Hệ thống đang chờ đợi...</div>
+    </div>
+
+    <div class="flow-container">
+        
+        <svg id="svg-layer"></svg>
+
+        <!-- Node 1: Frontend -->
+        <div class="node" id="node-react">
+            <div class="step-badge" style="background:#61dafb; color:#000;">1</div>
+            <div class="node-header">
+                <i class="fa-brands fa-react"></i>
+                <h3>Frontend React (Vite)</h3>
+            </div>
+            <span class="filepath">frontend/src/api.js</span>
+            <div class="function-name">fetchApi()</div>
+            <p>Học sinh bấm "Nộp bài". Dữ liệu user lấy từ JWT, ID bài thi lấy từ URL.</p>
+            <div class="payload-box">
+fetchApi(`/exams/${quizId}/submit`, { 
+  method: 'POST' 
+});
+            </div>
+        </div>
+
+        <!-- Node 2: Controller -->
+        <div class="node" id="node-controller">
+            <div class="step-badge" style="background:#6db33f;">2</div>
+            <div class="node-header">
+                <i class="fa-solid fa-server"></i>
+                <h3>Main Thread (Spring)</h3>
+            </div>
+            <span class="filepath">.../controller/ExamController.java</span>
+            <div class="function-name">@PostMapping()<br>public ResponseEntity submitExam(...)</div>
+            <p>Nhận request, tạo Event. Trả về HTTP 202 ngay lập tức mà không đợi chấm điểm.</p>
+            <div class="payload-box">
+examService.submitExam(userId, quizId);
+return ResponseEntity.accepted().build();
+// Trả về 202 ngay tức thì
+            </div>
+        </div>
+
+        <!-- Node 3: RabbitMQ -->
+        <div class="node" id="node-rabbitmq">
+            <div class="step-badge" style="background:var(--rabbitmq);">3</div>
+            <div class="node-header">
+                <i class="fa-brands fa-neos" style="transform: rotate(90deg);"></i>
+                <h3>RabbitMQ Broker</h3>
+            </div>
+            <span class="filepath">.../service/ExamService.java</span>
+            <div class="function-name">rabbitTemplate.convertAndSend(...)</div>
+            <p>Đẩy Event nộp bài vào Message Queue để chờ xử lý ngầm.</p>
+            <div class="payload-box">
+ExamSubmittedEvent event = 
+  new ExamSubmittedEvent(userId, quizId);
+
+rabbitTemplate.convertAndSend(
+  RabbitMQConfig.EXCHANGE_NAME, 
+  "exam.submit", 
+  event
+);
+            </div>
+        </div>
+
+        <!-- Node 4: WebSocket -->
+        <div class="node" id="node-websocket">
+            <div class="step-badge" style="background:#a855f7;">7</div>
+            <div class="node-header">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <h3>STOMP WebSocket</h3>
+            </div>
+            <span class="filepath">frontend/src/App.jsx</span>
+            <div class="function-name">client.subscribe()</div>
+            <p>Nhận JSON thông báo. React dùng toast() để hiện Pop-up góc màn hình.</p>
+            <div class="payload-box">
+client.subscribe('/user/queue/notifications', 
+  (msg) => {
+    toast.success(JSON.parse(msg.body).message);
+  }
+);
+            </div>
+        </div>
+
+        <!-- Node 6: Worker (HUB) -->
+        <div class="node" id="node-worker">
+            <div class="step-badge" style="background:#3b82f6;">4</div>
+            <div class="node-header">
+                <i class="fa-solid fa-microchip"></i>
+                <h3>Background Worker</h3>
+            </div>
+            <span class="filepath">.../service/ExamProcessorService.java</span>
+            <div class="function-name">@RabbitListener<br>public void processExamSubmission()</div>
+            <p>Worker bắt Event. Làm nhiệm vụ trung tâm: Rút đáp án, chấm điểm, lưu DB, báo cáo.</p>
+            <div class="payload-box">
+@RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
+public void processExamSubmission(Event e) {
+  // 1. Kéo đáp án từ Redis
+  // 2. Tính điểm
+  // 3. Lưu xuống PostgreSQL
+  // 4. Bắn WebSockets
+}
+            </div>
+        </div>
+
+        <!-- Node 5: Redis -->
+        <div class="node" id="node-redis">
+            <div class="step-badge" style="background:var(--redis);">5</div>
+            <div class="node-header">
+                <i class="fa-solid fa-database"></i>
+                <h3>Redis Cache</h3>
+            </div>
+            <span class="filepath">.../service/ExamProcessorService.java</span>
+            <div class="function-name">redisTemplate.opsForHash().entries()</div>
+            <p>Cung cấp toàn bộ đáp án của user cho Worker với độ trễ siêu thấp O(1).</p>
+            <div class="payload-box">
+String key = "exam:" + quizId + ":user:" + userId;
+Map<Object, Object> userAnswers = 
+  redisTemplate.opsForHash().entries(key);
+            </div>
+        </div>
+
+        <!-- Node 8: PostgreSQL -->
+        <div class="node" id="node-postgres">
+            <div class="step-badge" style="background:var(--postgres);">6</div>
+            <div class="node-header">
+                <i class="fa-solid fa-server"></i>
+                <h3>PostgreSQL</h3>
+            </div>
+            <span class="filepath">.../repository/ExamResultRepository.java</span>
+            <div class="function-name">examResultRepository.save(...)</div>
+            <p>Lưu vĩnh viễn bảng điểm và bằng chứng vào Database.</p>
+            <div class="payload-box">
+ExamResult result = new ExamResult(
+  userId, quizId, score, evidence
+);
+examResultRepository.save(result);
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function drawConnectors() {
+            const svg = document.getElementById('svg-layer');
+            svg.innerHTML = ''; 
+            document.querySelectorAll('.dynamic-label').forEach(e => e.remove()); 
+
+            const containerRect = document.querySelector('.flow-container').getBoundingClientRect();
+
+            const connect = (id1, id2, labelText, color) => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return;
+
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+
+                const x1 = rect1.left + rect1.width / 2 - containerRect.left;
+                const y1 = rect1.top + rect1.height / 2 - containerRect.top;
+                const x2 = rect2.left + rect2.width / 2 - containerRect.left;
+                const y2 = rect2.top + rect2.height / 2 - containerRect.top;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', '4');
+                line.setAttribute('opacity', '0.3'); 
+                svg.appendChild(line);
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'dynamic-label';
+                labelDiv.innerText = labelText;
+                labelDiv.style.left = ((x1 + x2) / 2) + 'px';
+                labelDiv.style.top = ((y1 + y2) / 2) + 'px';
+                labelDiv.style.color = color;
+                document.querySelector('.flow-container').appendChild(labelDiv);
+            };
+
+            connect('node-react', 'node-controller', 'POST /submit', '#6db33f');
+            connect('node-controller', 'node-rabbitmq', 'convertAndSend()', '#ff6600');
+            connect('node-rabbitmq', 'node-worker', '@RabbitListener', '#ff6600');
+            connect('node-worker', 'node-redis', 'opsForHash()', '#ef4444');
+            connect('node-worker', 'node-postgres', 'save()', '#336791');
+            connect('node-worker', 'node-websocket', 'messagingTemplate', '#a855f7');
+            connect('node-websocket', 'node-react', 'toast()', '#61dafb');
+        }
+
+        function updateStatus(text, color = '#60a5fa') {
+            const bar = document.getElementById('status-bar');
+            bar.style.opacity = '0';
+            setTimeout(() => {
+                bar.innerText = text;
+                bar.style.color = color;
+                bar.style.borderColor = color;
+                bar.style.opacity = '1';
+            }, 300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function sendPacket(id1, id2, color, duration) {
+            return new Promise(resolve => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return resolve();
+
+                const container = document.querySelector('.flow-container');
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+                const cRect = container.getBoundingClientRect();
+                
+                const x1 = rect1.left + rect1.width / 2 - cRect.left;
+                const y1 = rect1.top + rect1.height / 2 - cRect.top;
+                const x2 = rect2.left + rect2.width / 2 - cRect.left;
+                const y2 = rect2.top + rect2.height / 2 - cRect.top;
+                
+                const packet = document.createElement('div');
+                packet.className = 'packet';
+                packet.style.backgroundColor = color;
+                packet.style.boxShadow = `0 0 20px ${color}, 0 0 40px ${color}`;
+                packet.style.left = x1 + 'px';
+                packet.style.top = y1 + 'px';
+                container.appendChild(packet);
+                
+                packet.getBoundingClientRect();
+                
+                packet.style.transition = `all ${duration}ms linear`;
+                packet.style.left = x2 + 'px';
+                packet.style.top = y2 + 'px';
+                
+                setTimeout(() => {
+                    packet.remove();
+                    resolve();
+                }, duration);
+            });
+        }
+
+        async function simulateFlow() {
+            const btn = document.getElementById('simBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang chạy giả lập...';
+            
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active-node'));
+            
+            const highlight = (id) => document.getElementById(id).classList.add('active-node');
+            const unhighlight = (id) => document.getElementById(id).classList.remove('active-node');
+
+            highlight('node-react');
+            updateStatus('1. Frontend gửi request POST /submit', '#61dafb');
+            await sleep(1000);
+            await sendPacket('node-react', 'node-controller', '#6db33f', 2500); 
+            
+            unhighlight('node-react');
+            highlight('node-controller');
+            updateStatus('2. Controller tiếp nhận, lập tức trả về HTTP 202 ngay và đẩy Event ngầm', '#6db33f');
+            await sleep(1200);
+            
+            sendPacket('node-controller', 'node-react', '#61dafb', 2500).then(() => { 
+                highlight('node-react');
+                setTimeout(() => unhighlight('node-react'), 2000);
+            });
+            await sendPacket('node-controller', 'node-rabbitmq', '#ff6600', 2500); 
+            
+            unhighlight('node-controller');
+            highlight('node-rabbitmq');
+            updateStatus('3. RabbitMQ đưa Event nộp bài vào Queue, Thread của Web kết thúc tại đây.', '#ff6600');
+            await sleep(2000); 
+            
+            await sendPacket('node-rabbitmq', 'node-worker', '#3b82f6', 2200); 
+            unhighlight('node-rabbitmq');
+            highlight('node-worker');
+            updateStatus('4. Background Worker (Tiến trình ngầm) bắt được Event, bắt đầu chấm điểm', '#3b82f6');
+            await sleep(1500);
+
+            updateStatus('5. Worker kéo cấp tốc mọi đáp án của Học sinh từ RAM (Redis)', '#ef4444');
+            await sendPacket('node-worker', 'node-redis', '#ef4444', 2000); 
+            highlight('node-redis');
+            await sleep(1000);
+            await sendPacket('node-redis', 'node-worker', '#ef4444', 2000); 
+            unhighlight('node-redis');
+            
+            updateStatus('6. Đã chấm điểm xong! Lưu thành tích vĩnh viễn vào DB', '#336791');
+            await sleep(1000);
+            await sendPacket('node-worker', 'node-postgres', '#336791', 2500); 
+            highlight('node-postgres');
+            await sleep(1500);
+            unhighlight('node-postgres');
+
+            updateStatus('7. Gửi tin nhắn thông báo (Push Notification) qua WebSocket', '#a855f7');
+            await sendPacket('node-worker', 'node-websocket', '#a855f7', 2200); 
+            unhighlight('node-worker');
+            highlight('node-websocket');
+            await sleep(1500);
+
+            updateStatus('8. WebSocket đẩy Data dạng Real-time thẳng lên màn hình học sinh', '#a855f7');
+            await sendPacket('node-websocket', 'node-react', '#61dafb', 2500); 
+            unhighlight('node-websocket');
+            highlight('node-react');
+
+            updateStatus('✅ Hoàn tất luồng xử lý! Màn hình hiển thị Pop-up Điểm số.', '#10b981');
+            await sleep(3500);
+            unhighlight('node-react');
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Chạy lại giả lập chậm';
+        }
+
+        window.addEventListener('load', drawConnectors);
+        window.addEventListener('resize', drawConnectors);
+    </script>
+</body>
+</html>

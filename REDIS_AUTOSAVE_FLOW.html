@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ Giả Lập O(1) Auto-Save Bằng Redis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #ef4444; 
+            --accent-glow: rgba(239, 68, 68, 0.5);
+            --success: #10b981;
+            --redis: #ef4444;
+            --postgres: #475569; 
+            --code-bg: #0b1120;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #fca5a5, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            z-index: 10;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 800px;
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 10;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #simBtn {
+            background: linear-gradient(135deg, #ef4444, #f59e0b);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #simBtn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(239, 68, 68, 0.6);
+        }
+
+        #simBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #status-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 28px;
+            text-align: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 60px 50px;
+            width: 100%;
+            max-width: 1400px;
+            position: relative;
+        }
+
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2; 
+        }
+
+        .node.active-node {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 10px inset var(--accent-glow);
+            transform: scale(1.03) translateY(-5px);
+            z-index: 3;
+        }
+
+        #node-react.active-node { border-color: #61dafb; box-shadow: 0 0 40px rgba(97, 218, 251, 0.5); }
+        #node-controller.active-node { border-color: #6db33f; box-shadow: 0 0 40px rgba(109, 179, 63, 0.5); }
+        #node-redis.active-node { border-color: #ef4444; box-shadow: 0 0 40px rgba(239, 68, 68, 0.5); }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .node-header i {
+            font-size: 2rem;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .node-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .filepath {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(239, 68, 68, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .function-name {
+            font-weight: 600;
+            color: #fca5a5;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .node p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .payload-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        /* Specific node styling */
+        #node-react .node-header i { color: #61dafb; }
+        #node-react .filepath { color: #61dafb; background: rgba(97, 218, 251, 0.1); }
+        #node-react .function-name { color: #a5f3fc; }
+        #node-react .payload-box { color: #a5f3fc; }
+        
+        #node-controller .node-header i { color: #6db33f; }
+        #node-controller .filepath { color: #6db33f; background: rgba(109, 179, 63, 0.1); }
+        #node-controller .function-name { color: #bbf7d0; }
+        #node-controller .payload-box { color: #bbf7d0; }
+        
+        #node-redis .node-header i { color: var(--redis); }
+        #node-redis .filepath { color: var(--redis); background: rgba(239, 68, 68, 0.1); }
+        #node-redis .function-name { color: #fca5a5; }
+        #node-redis .payload-box { color: #fca5a5; }
+        
+        #node-postgres .node-header i { color: var(--postgres); }
+        #node-postgres .filepath { color: var(--postgres); background: rgba(71, 85, 105, 0.1); }
+
+        .bypassed {
+            opacity: 0.5;
+            position: relative;
+        }
+        .bypassed::before {
+            content: '\f05e'; 
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem;
+            color: rgba(239, 68, 68, 0.2);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Placement in Grid */
+        #node-react { grid-column: 1; grid-row: 1; }
+        #node-controller { grid-column: 2; grid-row: 1; }
+        #node-redis { grid-column: 3; grid-row: 1; border-color: rgba(239, 68, 68, 0.5); }
+        
+        #node-postgres { grid-column: 2; grid-row: 2; margin-top: 20px;}
+
+        .step-badge {
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            background: var(--accent);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--card-bg);
+            z-index: 10;
+        }
+
+        .dynamic-label {
+            position: absolute;
+            background: var(--bg-color);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 5;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+
+        .packet {
+            position: absolute;
+            width: 30px; 
+            height: 30px;
+            border-radius: 50%;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .packet::after {
+            content: '';
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 15px white;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Sơ Đồ Giả Lập O(1) Auto-Save Bằng Redis</h1>
+    <p class="subtitle">Mô phỏng tốc độ phản hồi cực nhanh khi học sinh click chọn đáp án. Database (PostgreSQL) hoàn toàn bị cô lập để bảo vệ tải.</p>
+
+    <div class="controls">
+        <button id="simBtn" onclick="simulateFlow()">
+            <i class="fa-solid fa-play"></i> Bắt đầu chạy giả lập Auto-save
+        </button>
+        <div id="status-bar">Hệ thống đang chờ đợi sự kiện Click chọn đáp án...</div>
+    </div>
+
+    <div class="flow-container">
+        
+        <svg id="svg-layer"></svg>
+
+        <!-- Node 1: Frontend -->
+        <div class="node" id="node-react">
+            <div class="step-badge" style="background:#61dafb; color:#000;">1</div>
+            <div class="node-header">
+                <i class="fa-brands fa-react"></i>
+                <h3>Học sinh chọn đáp án</h3>
+            </div>
+            <span class="filepath">frontend/src/pages/TakeQuiz.jsx</span>
+            <div class="function-name">fetchApi()</div>
+            <p>Mỗi khi user thay đổi đáp án, Frontend bắn ngầm request lưu tự động.</p>
+            <div class="payload-box">
+fetchApi(`/exams/${quizId}/...`, {
+  method: 'POST',
+  body: JSON.stringify({
+    answer: "C"
+  })
+});
+            </div>
+        </div>
+
+        <!-- Node 2: Controller -->
+        <div class="node" id="node-controller">
+            <div class="step-badge" style="background:#6db33f;">2</div>
+            <div class="node-header">
+                <i class="fa-solid fa-server"></i>
+                <h3>ExamController (Spring)</h3>
+            </div>
+            <span class="filepath">.../controller/ExamController.java</span>
+            <div class="function-name">@PostMapping(...)<br>public ResponseEntity autoSave(...)</div>
+            <p>Nhận kết quả và gọi Service. Tuyệt đối không gọi tới JPA Repository.</p>
+            <div class="payload-box">
+examService.autoSaveAnswer(
+  userId, quizId, qId, req.getAnswer()
+);
+return ResponseEntity.ok().build();
+            </div>
+        </div>
+
+        <!-- Node 3: Redis -->
+        <div class="node" id="node-redis">
+            <div class="step-badge" style="background:var(--redis);">3</div>
+            <div class="node-header">
+                <i class="fa-solid fa-database"></i>
+                <h3>Redis Hash (RAM)</h3>
+            </div>
+            <span class="filepath">.../service/ExamService.java</span>
+            <div class="function-name">redisTemplate.opsForHash().put(...)</div>
+            <p>Ghi đè đáp án thẳng vào RAM (O(1)). Bất chấp hàng triệu request.</p>
+            <div class="payload-box">
+String key = "exam:" + quizId + ...;
+redisTemplate.opsForHash().put(
+  key, String.valueOf(qId), answer
+);
+            </div>
+        </div>
+
+        <!-- Node 4: PostgreSQL (Bypassed) -->
+        <div class="node bypassed" id="node-postgres">
+            <div class="node-header">
+                <i class="fa-solid fa-ban"></i>
+                <h3>PostgreSQL (Bảo vệ hoàn toàn)</h3>
+            </div>
+            <span class="filepath">Không sử dụng trong luồng này</span>
+            <p>Vì ghi ổ cứng Disk I/O rất chậm, nếu Auto-save bằng DB dưới hàng nghìn request, hệ thống sẽ sụp đổ (Timeout).</p>
+        </div>
+
+    </div>
+
+    <script>
+        function drawConnectors() {
+            const svg = document.getElementById('svg-layer');
+            svg.innerHTML = ''; 
+            document.querySelectorAll('.dynamic-label').forEach(e => e.remove()); 
+
+            const containerRect = document.querySelector('.flow-container').getBoundingClientRect();
+
+            const connect = (id1, id2, labelText, color) => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return;
+
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+
+                const x1 = rect1.left + rect1.width / 2 - containerRect.left;
+                const y1 = rect1.top + rect1.height / 2 - containerRect.top;
+                const x2 = rect2.left + rect2.width / 2 - containerRect.left;
+                const y2 = rect2.top + rect2.height / 2 - containerRect.top;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', '4');
+                line.setAttribute('opacity', '0.3'); 
+                svg.appendChild(line);
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'dynamic-label';
+                labelDiv.innerText = labelText;
+                labelDiv.style.left = ((x1 + x2) / 2) + 'px';
+                labelDiv.style.top = ((y1 + y2) / 2) + 'px';
+                labelDiv.style.color = color;
+                document.querySelector('.flow-container').appendChild(labelDiv);
+            };
+
+            connect('node-react', 'node-controller', 'POST /answers', '#6db33f');
+            connect('node-controller', 'node-redis', 'opsForHash().put()', '#ef4444');
+            
+            const drawXLine = (id1, id2, color) => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return;
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+                const x1 = rect1.left + rect1.width / 2 - containerRect.left;
+                const y1 = rect1.top + rect1.height / 2 - containerRect.top;
+                const x2 = rect2.left + rect2.width / 2 - containerRect.left;
+                const y2 = rect2.top + rect2.height / 2 - containerRect.top;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke-dasharray', '8,8');
+                line.setAttribute('opacity', '0.2');
+                svg.appendChild(line);
+                
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'dynamic-label';
+                labelDiv.innerText = "NO DISK I/O";
+                labelDiv.style.left = ((x1 + x2) / 2) + 'px';
+                labelDiv.style.top = ((y1 + y2) / 2) + 'px';
+                labelDiv.style.color = color;
+                labelDiv.style.opacity = '0.5';
+                document.querySelector('.flow-container').appendChild(labelDiv);
+            };
+            drawXLine('node-controller', 'node-postgres', '#475569');
+        }
+
+        function updateStatus(text, color = '#fca5a5') {
+            const bar = document.getElementById('status-bar');
+            bar.style.opacity = '0';
+            setTimeout(() => {
+                bar.innerText = text;
+                bar.style.color = color;
+                bar.style.borderColor = color;
+                bar.style.opacity = '1';
+            }, 300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function sendPacket(id1, id2, color, duration) {
+            return new Promise(resolve => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return resolve();
+
+                const container = document.querySelector('.flow-container');
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+                const cRect = container.getBoundingClientRect();
+                
+                const x1 = rect1.left + rect1.width / 2 - cRect.left;
+                const y1 = rect1.top + rect1.height / 2 - cRect.top;
+                const x2 = rect2.left + rect2.width / 2 - cRect.left;
+                const y2 = rect2.top + rect2.height / 2 - cRect.top;
+                
+                const packet = document.createElement('div');
+                packet.className = 'packet';
+                packet.style.backgroundColor = color;
+                packet.style.boxShadow = `0 0 20px ${color}, 0 0 40px ${color}`;
+                packet.style.left = x1 + 'px';
+                packet.style.top = y1 + 'px';
+                container.appendChild(packet);
+                
+                packet.getBoundingClientRect(); 
+                
+                packet.style.transition = `all ${duration}ms linear`;
+                packet.style.left = x2 + 'px';
+                packet.style.top = y2 + 'px';
+                
+                setTimeout(() => {
+                    packet.remove();
+                    resolve();
+                }, duration);
+            });
+        }
+
+        async function simulateFlow() {
+            const btn = document.getElementById('simBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Auto-saving...';
+            
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active-node'));
+            
+            const highlight = (id) => document.getElementById(id).classList.add('active-node');
+            const unhighlight = (id) => document.getElementById(id).classList.remove('active-node');
+
+            highlight('node-react');
+            updateStatus('1. Học sinh vừa chọn/sửa đáp án. Trình duyệt thực thi fetch API.', '#61dafb');
+            await sleep(1000);
+            await sendPacket('node-react', 'node-controller', '#6db33f', 2000);
+            
+            unhighlight('node-react');
+            highlight('node-controller');
+            updateStatus('2. Backend tiếp nhận dữ liệu. Controller kích hoạt autoSaveAnswer.', '#6db33f');
+            await sleep(1500);
+            
+            updateStatus('3. Ghi đè vào Redis (RAM) cực nhanh chỉ với thao tác O(1). KHÔNG gọi Repository.', '#ef4444');
+            await sendPacket('node-controller', 'node-redis', '#ef4444', 2000);
+            
+            highlight('node-redis');
+            await sleep(1000);
+            updateStatus('4. Lệnh opsForHash().put() thành công! Đẩy phản hồi về.', '#ef4444');
+            
+            await sendPacket('node-redis', 'node-controller', '#ef4444', 1500);
+            unhighlight('node-redis');
+            
+            updateStatus('5. Trả HTTP 200 OK ngay lập tức cho Frontend thông qua ResponseEntity.', '#6db33f');
+            await sleep(1000);
+            await sendPacket('node-controller', 'node-react', '#61dafb', 2000);
+            
+            unhighlight('node-controller');
+            highlight('node-react');
+
+            updateStatus('⚡ Hoàn tất Auto-save trong tíc tắc. Rất khó sập mạng.', '#10b981');
+            await sleep(2500);
+            unhighlight('node-react');
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Chạy thử Auto-save lần nữa';
+        }
+
+        window.addEventListener('load', drawConnectors);
+        window.addEventListener('resize', drawConnectors);
+    </script>
+</body>
+</html>

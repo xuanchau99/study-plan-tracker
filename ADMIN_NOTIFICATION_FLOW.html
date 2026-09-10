@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ Giả Lập: Cơ Chế Chống Treo Trình Duyệt Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #a855f7;
+            --accent-glow: rgba(168, 85, 247, 0.5);
+            --rabbitmq: #ff6600;
+            --worker: #3b82f6;
+            --admin: #10b981;
+            --code-bg: #0b1120;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #d8b4fe, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            z-index: 10;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 900px;
+            z-index: 10;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 10;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #simBtn {
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #simBtn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6);
+        }
+
+        #simBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #status-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+            color: #d8b4fe;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 28px;
+            text-align: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+            max-width: 1500px;
+            position: relative;
+        }
+
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2; 
+        }
+
+        .node.active-node {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 10px inset var(--accent-glow);
+            transform: scale(1.03) translateY(-5px);
+            z-index: 3;
+        }
+
+        #node-queue.active-node { border-color: var(--rabbitmq); box-shadow: 0 0 40px rgba(255, 102, 0, 0.5); }
+        #node-worker.active-node { border-color: var(--worker); box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+        #node-websocket.active-node { border-color: var(--accent); box-shadow: 0 0 40px rgba(168, 85, 247, 0.5); }
+        #node-admin.active-node { border-color: var(--admin); box-shadow: 0 0 40px rgba(16, 185, 129, 0.5); }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .node-header i {
+            font-size: 2rem;
+            margin-right: 15px;
+        }
+
+        .node-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .filepath {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .function-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .node p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .payload-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            overflow-x: hidden;
+            margin-top: 10px;
+        }
+
+        /* Specific styles */
+        #node-queue .node-header i { color: var(--rabbitmq); transform: rotate(90deg); }
+        #node-queue .filepath { color: var(--rabbitmq); background: rgba(255, 102, 0, 0.1); }
+        #node-queue .function-name { color: #fdba74; }
+        
+        #node-worker .node-header i { color: var(--worker); }
+        #node-worker .filepath { color: var(--worker); background: rgba(59, 130, 246, 0.1); }
+        #node-worker .function-name { color: #93c5fd; }
+        #node-worker .payload-box { color: #93c5fd; }
+        
+        #node-websocket .node-header i { color: var(--accent); }
+        #node-websocket .filepath { color: var(--accent); background: rgba(168, 85, 247, 0.1); }
+        #node-websocket .function-name { color: #d8b4fe; }
+        #node-websocket .payload-box { color: #d8b4fe; }
+        
+        #node-admin .node-header i { color: var(--admin); }
+        #node-admin .filepath { color: var(--admin); background: rgba(16, 185, 129, 0.1); }
+        #node-admin .function-name { color: #6ee7b7; }
+        #node-admin .payload-box { color: #6ee7b7; max-height: 180px;}
+
+        .step-badge {
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            background: var(--accent);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--card-bg);
+            z-index: 10;
+        }
+
+        .dynamic-label {
+            position: absolute;
+            background: var(--bg-color);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 5;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+
+        .packet {
+            position: absolute;
+            width: 24px; 
+            height: 24px;
+            border-radius: 50%;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .packet::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px white;
+        }
+
+        /* Queue simulation inside the box */
+        .queue-item {
+            background: rgba(255, 102, 0, 0.2);
+            border: 1px solid var(--rabbitmq);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-size: 0.7rem;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .toast-item {
+            background: rgba(16, 185, 129, 0.2);
+            border-left: 3px solid var(--admin);
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            font-size: 0.7rem;
+            color: #fff;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Sơ Đồ Cơ Chế Chống Quá Tải Thông Báo</h1>
+    <p class="subtitle">Khi 10,000 học sinh nộp bài cùng một lúc (Traffic Spike), nếu Server đẩy 10,000 thông báo WebSocket lập tức về trình duyệt của Admin, trình duyệt sẽ bị treo (Freeze/Crash). <br><strong>Giải pháp:</strong> RabbitMQ đóng vai trò làm <em>"Hồ chứa" (Buffer)</em> kìm hãm luồng dữ liệu, cho phép Background Worker chấm điểm và nhả thông báo nhỏ giọt đều đặn, đảm bảo trang Dashboard của Admin luôn mượt mà.</p>
+
+    <div class="controls">
+        <button id="simBtn" onclick="simulateFlow()">
+            <i class="fa-solid fa-play"></i> Bắt đầu giả lập 1,000 users nộp bài
+        </button>
+        <div id="status-bar">Hệ thống đang hoạt động bình thường...</div>
+    </div>
+
+    <div class="flow-container">
+        
+        <svg id="svg-layer"></svg>
+
+        <!-- Node 1: Queue -->
+        <div class="node" id="node-queue">
+            <div class="step-badge" style="background:var(--rabbitmq);">1</div>
+            <div class="node-header">
+                <i class="fa-brands fa-neos"></i>
+                <h3>RabbitMQ Queue</h3>
+            </div>
+            <span class="filepath">Hàng đợi Message Broker</span>
+            <div class="function-name">Tồn đọng: <span id="queue-count">1000</span> Events</div>
+            <p>Hứng trọn 1000 lượt nộp bài cùng lúc. Đóng vai trò là cái Phễu (Buffer).</p>
+            <div class="payload-box" id="queue-box" style="color: #fdba74;">
+                <!-- Items populated by JS -->
+            </div>
+        </div>
+
+        <!-- Node 2: Worker -->
+        <div class="node" id="node-worker">
+            <div class="step-badge" style="background:var(--worker);">2</div>
+            <div class="node-header">
+                <i class="fa-solid fa-microchip"></i>
+                <h3>Background Worker</h3>
+            </div>
+            <span class="filepath">ExamProcessorService.java</span>
+            <div class="function-name">processExamSubmission()</div>
+            <p>Rút từng bài ra chấm, sau đó dùng vòng lặp For để gửi kết quả cho các Admin.</p>
+            <div class="payload-box">
+// Lặp qua danh sách Admin và gửi
+for (User admin : admins) {
+  notificationService
+    .sendNotification(admin, msg);
+}
+            </div>
+        </div>
+
+        <!-- Node 3: WebSocket -->
+        <div class="node" id="node-websocket">
+            <div class="step-badge" style="background:var(--accent);">3</div>
+            <div class="node-header">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <h3>STOMP Server</h3>
+            </div>
+            <span class="filepath">NotificationService.java</span>
+            <div class="function-name">convertAndSendToUser(...)</div>
+            <p>Đẩy Frame JSON qua giao thức STOMP TCP tới trình duyệt của Admin.</p>
+            <div class="payload-box">
+messagingTemplate
+ .convertAndSendToUser(
+  admin.getUsername(), 
+  "/queue/notifications", 
+  dto
+);
+            </div>
+        </div>
+
+        <!-- Node 4: Admin Dashboard -->
+        <div class="node" id="node-admin">
+            <div class="step-badge" style="background:var(--admin);">4</div>
+            <div class="node-header">
+                <i class="fa-solid fa-user-shield"></i>
+                <h3>Admin Dashboard</h3>
+            </div>
+            <span class="filepath">AdminDashboard.jsx (React)</span>
+            <div class="function-name">client.subscribe('/user/queue/notifications')</div>
+            <p>Lắng nghe và hiện Toast thông báo "nhỏ giọt" đều đặn. Giao diện vẫn mượt mà.</p>
+            <div class="payload-box" id="toast-box">
+                <!-- Toasts populated by JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function drawConnectors() {
+            const svg = document.getElementById('svg-layer');
+            svg.innerHTML = ''; 
+            document.querySelectorAll('.dynamic-label').forEach(e => e.remove()); 
+
+            const containerRect = document.querySelector('.flow-container').getBoundingClientRect();
+
+            const connect = (id1, id2, labelText, color) => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return;
+
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+
+                const x1 = rect1.left + rect1.width / 2 - containerRect.left;
+                const y1 = rect1.top + rect1.height / 2 - containerRect.top;
+                const x2 = rect2.left + rect2.width / 2 - containerRect.left;
+                const y2 = rect2.top + rect2.height / 2 - containerRect.top;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', '4');
+                line.setAttribute('opacity', '0.3'); 
+                svg.appendChild(line);
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'dynamic-label';
+                labelDiv.innerText = labelText;
+                labelDiv.style.left = ((x1 + x2) / 2) + 'px';
+                labelDiv.style.top = ((y1 + y2) / 2) + 'px';
+                labelDiv.style.color = color;
+                document.querySelector('.flow-container').appendChild(labelDiv);
+            };
+
+            connect('node-queue', 'node-worker', 'Pop message (Pacing)', '#ff6600');
+            connect('node-worker', 'node-websocket', 'sendNotification()', '#a855f7');
+            connect('node-websocket', 'node-admin', 'WebSocket Frame', '#10b981');
+        }
+
+        // Initialize UI
+        function initUI() {
+            const queueBox = document.getElementById('queue-box');
+            queueBox.innerHTML = '';
+            for(let i=0; i<4; i++) {
+                queueBox.innerHTML += `<div class="queue-item"><span>Event: user_${1000 - i}</span> <span>Pending</span></div>`;
+            }
+            queueBox.innerHTML += `<div class="queue-item" style="border:none; background:transparent; text-align:center;">... và 996 cái nữa</div>`;
+            document.getElementById('queue-count').innerText = "1000";
+            
+            const toastBox = document.getElementById('toast-box');
+            toastBox.innerHTML = `// React xử lý JSON:
+onMessage: (msg) => {
+  toast.info(JSON.parse(msg.body).message);
+}`;
+            drawConnectors();
+        }
+
+        function updateStatus(text, color = '#fca5a5') {
+            const bar = document.getElementById('status-bar');
+            bar.style.opacity = '0';
+            setTimeout(() => {
+                bar.innerText = text;
+                bar.style.color = color;
+                bar.style.borderColor = color;
+                bar.style.opacity = '1';
+            }, 300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function sendPacket(id1, id2, color, duration) {
+            return new Promise(resolve => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return resolve();
+
+                const container = document.querySelector('.flow-container');
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+                const cRect = container.getBoundingClientRect();
+                
+                const x1 = rect1.left + rect1.width / 2 - cRect.left;
+                const y1 = rect1.top + rect1.height / 2 - cRect.top;
+                const x2 = rect2.left + rect2.width / 2 - cRect.left;
+                const y2 = rect2.top + rect2.height / 2 - cRect.top;
+                
+                const packet = document.createElement('div');
+                packet.className = 'packet';
+                packet.style.backgroundColor = color;
+                packet.style.boxShadow = `0 0 15px ${color}, 0 0 30px ${color}`;
+                packet.style.left = x1 + 'px';
+                packet.style.top = y1 + 'px';
+                container.appendChild(packet);
+                
+                packet.getBoundingClientRect(); // trigger reflow
+                
+                packet.style.transition = `all ${duration}ms linear`;
+                packet.style.left = x2 + 'px';
+                packet.style.top = y2 + 'px';
+                
+                setTimeout(() => {
+                    packet.remove();
+                    resolve();
+                }, duration);
+            });
+        }
+
+        async function simulateFlow() {
+            const btn = document.getElementById('simBtn');
+            btn.disabled = true;
+            initUI();
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang mô phỏng quá trình xả tải...';
+            
+            let remaining = 1000;
+            let processed = 0;
+            const toastBox = document.getElementById('toast-box');
+            // Clear code snippet to show real toasts during simulation
+            toastBox.innerHTML = '';
+            
+            const queueBox = document.getElementById('queue-box');
+
+            updateStatus('🚨 1,000 học sinh vừa nộp bài cùng lúc! RabbitMQ giữ lại toàn bộ trong hàng đợi.', '#ff6600');
+            document.getElementById('node-queue').classList.add('active-node');
+            await sleep(2000);
+
+            updateStatus('⚙️ Worker bắt đầu rút nhỏ giọt từng bài ra xử lý, không làm sập Database.', '#3b82f6');
+            document.getElementById('node-worker').classList.add('active-node');
+
+            // Simulate processing 5 events sequentially to show pacing
+            for (let i = 1; i <= 5; i++) {
+                // 1. Pop from queue
+                remaining -= 1;
+                document.getElementById('queue-count').innerText = remaining;
+                
+                const qItems = queueBox.querySelectorAll('.queue-item:not([style*="border:none"])');
+                if(qItems.length > 0) qItems[0].remove();
+
+                sendPacket('node-queue', 'node-worker', '#ff6600', 800);
+                await sleep(900);
+
+                // 2. Worker sends to WebSocket
+                document.getElementById('node-websocket').classList.add('active-node');
+                sendPacket('node-worker', 'node-websocket', '#a855f7', 600);
+                await sleep(650);
+
+                // 3. WebSocket pushes to Admin
+                document.getElementById('node-websocket').classList.remove('active-node');
+                document.getElementById('node-admin').classList.add('active-node');
+                sendPacket('node-websocket', 'node-admin', '#10b981', 600).then(() => {
+                    processed++;
+                    toastBox.innerHTML = `<div class="toast-item">Học sinh user_${1000 - i + 1} vừa nộp bài (8/10)</div>` + toastBox.innerHTML;
+                    if(toastBox.children.length > 4) toastBox.lastChild.remove();
+                    
+                    setTimeout(() => {
+                        document.getElementById('node-admin').classList.remove('active-node');
+                    }, 300);
+                });
+
+                if(i === 2) {
+                    updateStatus('📨 Admin nhận được thông báo rải rác một cách mượt mà, không bị lag trình duyệt.', '#10b981');
+                }
+                
+                await sleep(500); 
+            }
+
+            document.getElementById('node-queue').classList.remove('active-node');
+            document.getElementById('node-worker').classList.remove('active-node');
+
+            updateStatus('✅ Quá trình diễn ra ổn định. Hệ thống được bảo vệ hoàn toàn khỏi đợt tấn công quá tải (Spike)!', '#10b981');
+            
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Chạy lại kịch bản quá tải';
+                // Reset code snippet if needed, but keeping toasts is fine.
+            }, 2000);
+        }
+
+        window.addEventListener('load', initUI);
+        window.addEventListener('resize', drawConnectors);
+    </script>
+</body>
+</html>

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ Giả Lập: Phân Quyền & Điều Hướng RBAC</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #f43f5e; /* Rose */
+            --accent-glow: rgba(244, 63, 94, 0.5);
+            --node1: #f59e0b; /* Amber */
+            --node2: #61dafb; /* React Cyan */
+            --node3: #ec4899; /* Pink */
+            --node4: #10b981; /* Emerald */
+            --code-bg: #0b1120;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #fda4af, #f43f5e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            z-index: 10;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 900px;
+            z-index: 10;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 10;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #simBtn {
+            background: linear-gradient(135deg, #f43f5e, #fb923c);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #simBtn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(244, 63, 94, 0.6);
+        }
+
+        #simBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #status-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.2);
+            color: #fda4af;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 28px;
+            text-align: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 50px 80px;
+            width: 100%;
+            max-width: 1100px;
+            position: relative;
+        }
+
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2; 
+        }
+
+        .node.active-node {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 10px inset var(--accent-glow);
+            transform: scale(1.03) translateY(-5px);
+            z-index: 3;
+        }
+
+        #node-gen.active-node { border-color: var(--node1); box-shadow: 0 0 40px rgba(245, 158, 11, 0.5); }
+        #node-react.active-node { border-color: var(--node2); box-shadow: 0 0 40px rgba(97, 218, 251, 0.5); }
+        #node-filter.active-node { border-color: var(--node3); box-shadow: 0 0 40px rgba(236, 72, 153, 0.5); }
+        #node-controller.active-node { border-color: var(--node4); box-shadow: 0 0 40px rgba(16, 185, 129, 0.5); }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .node-header i { font-size: 2rem; margin-right: 15px; }
+        .node-header h3 { margin: 0; font-size: 1.1rem; }
+
+        .filepath {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .function-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .node p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .payload-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            overflow-x: hidden;
+            margin-top: 10px;
+        }
+
+        /* Specific styles */
+        #node-gen .node-header i { color: var(--node1); }
+        #node-gen .filepath { color: var(--node1); background: rgba(245, 158, 11, 0.1); }
+        #node-gen .function-name { color: #fde68a; }
+        #node-gen .payload-box { color: #fde68a; }
+        
+        #node-react .node-header i { color: var(--node2); }
+        #node-react .filepath { color: var(--node2); background: rgba(97, 218, 251, 0.1); }
+        #node-react .function-name { color: #a5f3fc; }
+        #node-react .payload-box { color: #a5f3fc; }
+        
+        #node-filter .node-header i { color: var(--node3); }
+        #node-filter .filepath { color: var(--node3); background: rgba(236, 72, 153, 0.1); }
+        #node-filter .function-name { color: #fbcfe8; }
+        #node-filter .payload-box { color: #fbcfe8; }
+        
+        #node-controller .node-header i { color: var(--node4); }
+        #node-controller .filepath { color: var(--node4); background: rgba(16, 185, 129, 0.1); }
+        #node-controller .function-name { color: #6ee7b7; }
+        #node-controller .payload-box { color: #6ee7b7; }
+
+        .step-badge {
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            background: var(--accent);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--card-bg);
+            z-index: 10;
+        }
+
+        /* Layout */
+        #node-gen { grid-column: 1; grid-row: 1; }
+        #node-react { grid-column: 2; grid-row: 1; }
+        #node-filter { grid-column: 2; grid-row: 2; }
+        #node-controller { grid-column: 1; grid-row: 2; }
+
+        .dynamic-label {
+            position: absolute;
+            background: var(--bg-color);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 5;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+
+        .packet {
+            position: absolute;
+            width: 24px; 
+            height: 24px;
+            border-radius: 50%;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .packet::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px white;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Cơ Chế Phân Quyền & Điều Hướng (RBAC)</h1>
+    <p class="subtitle">Giải thích cách hệ thống phân biệt Admin và Học sinh thông qua Chữ ký Token, và cách ứng dụng thực hiện điều hướng (Routing) ở cả phía giao diện (Frontend) lẫn bảo vệ API (Backend).</p>
+
+    <div class="controls">
+        <button id="simBtn" onclick="simulateFlow()">
+            <i class="fa-solid fa-play"></i> Bắt đầu giả lập tài khoản ADMIN
+        </button>
+        <div id="status-bar">Hệ thống sẵn sàng...</div>
+    </div>
+
+    <div class="flow-container">
+        
+        <svg id="svg-layer"></svg>
+
+        <!-- Node 1: Token Gen -->
+        <div class="node" id="node-gen">
+            <div class="step-badge" style="background:var(--node1);">1</div>
+            <div class="node-header">
+                <i class="fa-solid fa-stamp"></i>
+                <h3>Gắn Quyền vào Token</h3>
+            </div>
+            <span class="filepath">.../security/JwtUtil.java</span>
+            <div class="function-name">generateToken(UserDetails user)</div>
+            <p>Khi đăng nhập thành công, Backend lấy Role (ví dụ ROLE_ADMIN) từ DB và "đóng dấu" vào phần Payload của Token.</p>
+            <div class="payload-box">
+Map&lt;String, Object&gt; claims = new HashMap<>();
+// Nhét Role vào Token
+claims.put("roles", user.getAuthorities());
+return createToken(claims, user.getUsername());
+            </div>
+        </div>
+
+        <!-- Node 2: React Routing -->
+        <div class="node" id="node-react">
+            <div class="step-badge" style="background:var(--node2); color:#000;">2</div>
+            <div class="node-header">
+                <i class="fa-brands fa-react"></i>
+                <h3>Frontend Điều Hướng</h3>
+            </div>
+            <span class="filepath">frontend/src/App.jsx (React Router)</span>
+            <div class="function-name">Navigate()</div>
+            <p>React giải mã Token ở phía Client. Nhìn thấy chữ ROLE_ADMIN liền tự động chuyển hướng màn hình sang trang Dashboard.</p>
+            <div class="payload-box">
+const payload = jwt_decode(token);
+if (payload.roles.includes('ROLE_ADMIN')) {
+    navigate('/admin-dashboard');
+} else {
+    navigate('/student-home');
+}
+            </div>
+        </div>
+
+        <!-- Node 3: Filter -->
+        <div class="node" id="node-filter">
+            <div class="step-badge" style="background:var(--node3);">3</div>
+            <div class="node-header">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h3>JwtFilter (Backend)</h3>
+            </div>
+            <span class="filepath">.../security/JwtAuthenticationFilter.java</span>
+            <div class="function-name">doFilterInternal(...)</div>
+            <p>Khi Admin gọi API bóc Token ra, Filter đọc được ROLE_ADMIN và nạp vào Ngữ cảnh bảo mật (SecurityContext) của Spring.</p>
+            <div class="payload-box">
+List&lt;GrantedAuthority&gt; roles = extractRoles(token);
+UsernamePasswordAuthenticationToken auth = 
+  new UsernamePasswordAuthenticationToken(user, null, roles);
+SecurityContextHolder.getContext().setAuthentication(auth);
+            </div>
+        </div>
+
+        <!-- Node 4: Controller Guard -->
+        <div class="node" id="node-controller">
+            <div class="step-badge" style="background:var(--node4);">4</div>
+            <div class="node-header">
+                <i class="fa-solid fa-lock"></i>
+                <h3>Bảo Vệ API</h3>
+            </div>
+            <span class="filepath">.../controller/AdminController.java</span>
+            <div class="function-name">@PreAuthorize("hasRole('ADMIN')")</div>
+            <p>Annotation này chặn mọi request. Nó kiểm tra SecurityContext, nếu có ROLE_ADMIN thì cho gọi hàm, không thì trả về 403 Forbidden.</p>
+            <div class="payload-box">
+@PreAuthorize("hasRole('ADMIN')")
+@GetMapping("/admin/users")
+public ResponseEntity<?> getAllUsers() {
+    return ResponseEntity.ok(userService.findAll());
+}
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function drawConnectors() {
+            const svg = document.getElementById('svg-layer');
+            svg.innerHTML = ''; 
+            document.querySelectorAll('.dynamic-label').forEach(e => e.remove()); 
+
+            const containerRect = document.querySelector('.flow-container').getBoundingClientRect();
+
+            const connect = (id1, id2, labelText, color, style = 'solid') => {
+                const el1 = document.getElementById(id1);
+                const el2 = document.getElementById(id2);
+                if (!el1 || !el2) return;
+
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+
+                let x1, y1, x2, y2;
+                
+                // Fine-tune anchors based on layout
+                if(id1 === 'node-gen' && id2 === 'node-react') {
+                    x1 = rect1.right - containerRect.left;
+                    y1 = rect1.top + rect1.height / 2 - containerRect.top;
+                    x2 = rect2.left - containerRect.left;
+                    y2 = rect2.top + rect2.height / 2 - containerRect.top;
+                } else if(id1 === 'node-react' && id2 === 'node-filter') {
+                    x1 = rect1.left + rect1.width / 2 - containerRect.left;
+                    y1 = rect1.bottom - containerRect.top;
+                    x2 = rect2.left + rect2.width / 2 - containerRect.left;
+                    y2 = rect2.top - containerRect.top;
+                } else if(id1 === 'node-filter' && id2 === 'node-controller') {
+                    x1 = rect1.left - containerRect.left;
+                    y1 = rect1.top + rect1.height / 2 - containerRect.top;
+                    x2 = rect2.right - containerRect.left;
+                    y2 = rect2.top + rect2.height / 2 - containerRect.top;
+                }
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', '4');
+                line.setAttribute('opacity', '0.3'); 
+                if(style === 'dashed') {
+                    line.setAttribute('stroke-dasharray', '8,8');
+                }
+                svg.appendChild(line);
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'dynamic-label';
+                labelDiv.innerText = labelText;
+                labelDiv.style.left = ((x1 + x2) / 2) + 'px';
+                labelDiv.style.top = ((y1 + y2) / 2) + 'px';
+                labelDiv.style.color = color;
+                document.querySelector('.flow-container').appendChild(labelDiv);
+                
+                return {x1, y1, x2, y2};
+            };
+
+            window.r1 = connect('node-gen', 'node-react', 'Trả JWT chứa [ROLE_ADMIN]', '#f59e0b');
+            window.r2 = connect('node-react', 'node-filter', 'Call API (Header Auth)', '#61dafb');
+            window.r3 = connect('node-filter', 'node-controller', 'Nạp Role vào SecurityContext', '#ec4899');
+        }
+
+        function updateStatus(text, color = '#fca5a5') {
+            const bar = document.getElementById('status-bar');
+            bar.style.opacity = '0';
+            setTimeout(() => {
+                bar.innerText = text;
+                bar.style.color = color;
+                bar.style.borderColor = color;
+                bar.style.opacity = '1';
+            }, 300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function sendCustomPacket(route, color, duration, reverse = false) {
+            return new Promise(resolve => {
+                if(!route) return resolve();
+                const container = document.querySelector('.flow-container');
+                
+                const packet = document.createElement('div');
+                packet.className = 'packet';
+                packet.style.backgroundColor = color;
+                packet.style.boxShadow = `0 0 20px ${color}, 0 0 40px ${color}`;
+                
+                let startX = reverse ? route.x2 : route.x1;
+                let startY = reverse ? route.y2 : route.y1;
+                let endX = reverse ? route.x1 : route.x2;
+                let endY = reverse ? route.y1 : route.y2;
+                
+                packet.style.left = startX + 'px';
+                packet.style.top = startY + 'px';
+                container.appendChild(packet);
+                
+                packet.getBoundingClientRect(); // trigger reflow
+                
+                packet.style.transition = `all ${duration}ms linear`;
+                packet.style.left = endX + 'px';
+                packet.style.top = endY + 'px';
+                
+                setTimeout(() => {
+                    packet.remove();
+                    resolve();
+                }, duration);
+            });
+        }
+
+        async function simulateFlow() {
+            const btn = document.getElementById('simBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang chạy giả lập...';
+            
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active-node'));
+            
+            const highlight = (id) => document.getElementById(id).classList.add('active-node');
+            const unhighlight = (id) => document.getElementById(id).classList.remove('active-node');
+
+            highlight('node-gen');
+            updateStatus('1. Quản trị viên đăng nhập thành công. Server ghi chữ "ROLE_ADMIN" vào Payload của Token.', '#fde68a');
+            await sleep(2500);
+            await sendCustomPacket(window.r1, '#f59e0b', 2000);
+            
+            unhighlight('node-gen');
+            highlight('node-react');
+            updateStatus('2. React nhận Token, giải mã ra thấy ROLE_ADMIN liền tự động chuyển trang sang /admin-dashboard.', '#61dafb');
+            await sleep(3000);
+            
+            updateStatus('React đính kèm Token này để gọi API lấy danh sách User.', '#61dafb');
+            await sendCustomPacket(window.r2, '#61dafb', 2000);
+            
+            unhighlight('node-react');
+            highlight('node-filter');
+            updateStatus('3. JwtFilter bóc tách chữ ký, tìm thấy ROLE_ADMIN. Nó báo cáo với Spring Security: "Người này là Admin!"', '#ec4899');
+            await sleep(3500);
+            
+            await sendCustomPacket(window.r3, '#ec4899', 1500);
+            
+            unhighlight('node-filter');
+            highlight('node-controller');
+            updateStatus('4. Controller thấy thẻ @PreAuthorize("hasRole(\'ADMIN\')"). Nó kiểm tra Context và cho phép đi qua.', '#10b981');
+            await sleep(3500);
+            
+            await sendCustomPacket(window.r3, '#10b981', 1500, true);
+            await sendCustomPacket(window.r2, '#10b981', 1500, true);
+            
+            unhighlight('node-controller');
+            highlight('node-react');
+            updateStatus('✅ Dữ liệu bảo mật tải thành công lên màn hình Quản trị viên!', '#10b981');
+            
+            setTimeout(() => {
+                unhighlight('node-react');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Chạy lại giả lập phân quyền';
+            }, 3000);
+        }
+
+        window.addEventListener('load', drawConnectors);
+        window.addEventListener('resize', drawConnectors);
+    </script>
+</body>
+</html>
