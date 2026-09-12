@@ -336,9 +336,9 @@ fetchApi(`/exams/${quizId}/submit`, {
                 <i class="fa-solid fa-server"></i>
                 <h3>Main Thread (Spring)</h3>
             </div>
-            <span class="filepath">.../controller/ExamController.java</span>
-            <div class="function-name">@PostMapping()<br>public ResponseEntity submitExam(...)</div>
-            <p>Nhận request, tạo Event. Trả về HTTP 202 ngay lập tức mà không đợi chấm điểm.</p>
+            <span class="filepath" style="font-size: 0.65rem;">TakeQuiz.jsx -> ExamController.java -> ExamService.java</span>
+            <div class="function-name">@PostMapping(...)<br>public ResponseEntity submitExam(...)</div>
+            <p><strong>Controller</strong> nhận request, chuyển xuống <strong>Service</strong> tạo Event. Trả về HTTP 202 ngay lập tức mà không đợi chấm điểm.</p>
             <div class="payload-box">
 examService.submitExam(userId, quizId);
 return ResponseEntity.accepted().build();
@@ -432,9 +432,9 @@ Map<Object, Object> userAnswers =
                 <i class="fa-solid fa-server"></i>
                 <h3>PostgreSQL</h3>
             </div>
-            <span class="filepath">.../repository/ExamResultRepository.java</span>
+            <span class="filepath" style="font-size: 0.65rem;">ExamProcessorService -> ExamResultRepository -> PostgreSQL</span>
             <div class="function-name">examResultRepository.save(...)</div>
-            <p>Lưu vĩnh viễn bảng điểm và bằng chứng vào Database.</p>
+            <p>Worker gọi <strong>Repository</strong>. Hibernate tự dịch lệnh <code>INSERT INTO</code> để lưu vĩnh viễn bảng điểm và bằng chứng vào Database.</p>
             <div class="payload-box">
 ExamResult result = new ExamResult(
   userId, quizId, score, evidence

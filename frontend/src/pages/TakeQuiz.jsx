@@ -16,10 +16,61 @@ export default function TakeQuiz({ user }) {
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     loadQuiz();
   }, [id]);
+
+  useEffect(() => {
+    if (!quiz) return;
+    
+    // Initial check
+    const now = new Date();
+    if (quiz.startTime && now < new Date(quiz.startTime)) {
+      setIsLocked(true);
+      setError("Quiz has not started yet.");
+      return;
+    }
+    if (quiz.endTime && now > new Date(quiz.endTime)) {
+      setIsLocked(true);
+      setError("Quiz has already ended.");
+      return;
+    }
+
+    // Set up timer if endTime exists
+    if (quiz.endTime) {
+      const timer = setInterval(() => {
+        const currentTime = new Date();
+        const end = new Date(quiz.endTime);
+        const diff = end - currentTime;
+        
+        if (diff <= 0) {
+          clearInterval(timer);
+          setTimeLeft(0);
+          setIsLocked(true);
+          // Auto submit
+          if (!submitted && !submitting) {
+             handleSubmit();
+          }
+        } else {
+          setTimeLeft(diff);
+        }
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [quiz, submitted, submitting]);
+
+  const formatTime = (ms) => {
+    if (ms === null) return null;
+    if (ms <= 0) return "00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (totalSeconds % 60).toString().padStart(2, '0');
+    return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
+  };
 
   const loadQuiz = async () => {
     try {
@@ -37,6 +88,7 @@ export default function TakeQuiz({ user }) {
    * Hits the Redis auto-save API instead of updating the main database.
    */
   const handleSelectOption = async (questionId, option) => {
+    if (isLocked) return;
     // Update local state for immediate UI feedback
     setAnswers(prev => ({ ...prev, [questionId]: option }));
     
@@ -112,12 +164,29 @@ export default function TakeQuiz({ user }) {
           <h1 className="title">{quiz.title}</h1>
           <p className="subtitle">{quiz.description}</p>
         </div>
-        <div className="badge">
-          <Clock size={16} /> Auto-saving enabled
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
+          {timeLeft !== null && (
+            <div className="badge" style={{ background: timeLeft < 60000 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)', color: timeLeft < 60000 ? '#f87171' : '#60a5fa', fontSize: 16, padding: '8px 16px' }}>
+              <Clock size={18} style={{ marginRight: 8 }} />
+              {formatTime(timeLeft)}
+            </div>
+          )}
+          <div className="badge">
+            <CheckCircle size={14} style={{ marginRight: 6 }} /> Auto-saving enabled
+          </div>
         </div>
       </div>
 
-      <div className="questions-list">
+      <div className="questions-list" style={{ position: 'relative' }}>
+        {isLocked && timeLeft === 0 && (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(2px)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 16 }}>
+             <div style={{ background: 'rgba(239, 68, 68, 0.9)', padding: '20px 40px', borderRadius: 12, textAlign: 'center', boxShadow: '0 10px 25px rgba(239, 68, 68, 0.3)' }}>
+               <i className="fa-solid fa-lock" style={{ fontSize: 32, marginBottom: 10 }}></i>
+               <h2 style={{ margin: 0 }}>Time's Up!</h2>
+               <p style={{ margin: '5px 0 0 0' }}>Auto-submitting your exam...</p>
+             </div>
+          </div>
+        )}
         {quiz.questions.map((q, index) => (
           <div key={q.id} className="glass-panel question-container">
             <h3 style={{ marginBottom: 16 }}>

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ Flow: Bài Thi Đồng Thời & Đếm Ngược</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #ec4899; 
+            --accent-glow: rgba(236, 72, 153, 0.5);
+            --admin: #8b5cf6;
+            --user: #3b82f6;
+            --lock: #ef4444;
+            --code-bg: #0b1120;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #f472b6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            z-index: 10;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 800px;
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 10;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #simBtn {
+            background: linear-gradient(135deg, #ec4899, #db2777);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #simBtn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(236, 72, 153, 0.6);
+        }
+
+        #simBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #status-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.2);
+            color: #fbcfe8;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 28px;
+            text-align: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            position: relative;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2; 
+        }
+
+        .node.active-node {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 10px inset var(--accent-glow);
+            transform: scale(1.03) translateY(-5px);
+            z-index: 3;
+        }
+
+        #node-admin.active-node { border-color: var(--admin); box-shadow: 0 0 40px rgba(139, 92, 246, 0.5); }
+        #node-user.active-node { border-color: var(--user); box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+        #node-lock.active-node { border-color: var(--lock); box-shadow: 0 0 40px rgba(239, 68, 68, 0.5); }
+        #node-lock.locked {
+            background: rgba(127, 29, 29, 0.4) !important;
+            border-color: #ef4444;
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .node-header i {
+            font-size: 2rem;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .node-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .filepath {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(236, 72, 153, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .function-name {
+            font-weight: 600;
+            color: #fbcfe8;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .node p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .payload-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin-top: 10px;
+            border-left: 3px solid var(--accent);
+        }
+
+        /* Specific node styling */
+        #node-admin .node-header i { color: var(--admin); }
+        #node-admin .filepath { color: var(--admin); background: rgba(139, 92, 246, 0.1); }
+        #node-admin .function-name { color: #c4b5fd; }
+        #node-admin .payload-box { color: #c4b5fd; border-color: var(--admin); }
+        
+        #node-user .node-header i { color: var(--user); }
+        #node-user .filepath { color: var(--user); background: rgba(59, 130, 246, 0.1); }
+        #node-user .function-name { color: #93c5fd; }
+        #node-user .payload-box { color: #93c5fd; border-color: var(--user); }
+        
+        #node-lock .node-header i { color: var(--lock); }
+        #node-lock .filepath { color: var(--lock); background: rgba(239, 68, 68, 0.1); }
+        #node-lock .function-name { color: #fca5a5; }
+        #node-lock .payload-box { color: #fca5a5; border-color: var(--lock); }
+
+        .step-badge {
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            background: var(--accent);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--card-bg);
+            z-index: 10;
+        }
+
+        /* Placement in Grid */
+        #node-admin { grid-column: 1; grid-row: 1; border-color: rgba(139, 92, 246, 0.5); }
+        #node-user { grid-column: 2; grid-row: 1; border-color: rgba(59, 130, 246, 0.5); }
+        #node-lock { grid-column: 3; grid-row: 1; border-color: rgba(239, 68, 68, 0.5); }
+
+        /* UI Mockup styling */
+        .mockup-box {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        .mockup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+        .timer-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .timer-badge.danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            animation: pulse 1s infinite;
+        }
+        .lock-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(2px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #f87171;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 5;
+        }
+        .locked .lock-overlay {
+            opacity: 1;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Sơ Đồ Tính Năng Mở Thi Đồng Thời</h1>
+    <p class="subtitle">Giải thích cơ chế phân quyền Admin cài đặt thời gian bắt đầu/kết thúc bài thi và cơ chế Frontend tự động khóa Box, submit ngầm khi hết giờ đối với User.</p>
+
+    <div class="controls">
+        <button id="simBtn" onclick="simulateFlow()">
+            <i class="fa-solid fa-play"></i> Mô phỏng Tiến Trình Làm Bài
+        </button>
+        <div id="status-bar">Đang chờ sự kiện...</div>
+    </div>
+
+    <div class="flow-container">
+        
+        <!-- Node 1: Admin -->
+        <div class="node" id="node-admin">
+            <div class="step-badge" style="background:var(--admin);">1</div>
+            <div class="node-header">
+                <i class="fa-solid fa-user-tie"></i>
+                <h3>Giao Diện Admin</h3>
+            </div>
+            <span class="filepath" style="font-size: 0.65rem;">AdminDashboard.jsx -> QuizController.java -> QuizService.java -> QuizRepository.java -> PostgreSQL</span>
+            <div class="function-name">Tạo Quiz & Lưu cấu hình thời gian</div>
+            <p>
+                <strong>1. Client:</strong> AdminDashboard.jsx gửi payload qua API POST <code>/api/v1/quizzes</code>.<br/>
+                <strong>2. Service:</strong> QuizController chuyển cho <strong>QuizService.java</strong> map dữ liệu vào Entity.<br/>
+                <strong>3. Repository:</strong> <strong>QuizRepository.java</strong> (kế thừa JpaRepository) gọi hàm <code>save()</code>.<br/>
+                <strong>4. Database:</strong> Hibernate tự động sinh câu lệnh <code>INSERT INTO quizzes (is_active, start_time, end_time)</code> để lưu xuống <strong>PostgreSQL</strong>.
+            </p>
+            <div class="payload-box">
+{
+  "status": "ACTIVE",
+  "startTime": "2026-09-12 08:00:00",
+  "endTime": "2026-09-12 09:30:00"
+}
+            </div>
+        </div>
+
+        <!-- Node 2: User -->
+        <div class="node" id="node-user">
+            <div class="step-badge" style="background:var(--user);">2</div>
+            <div class="node-header">
+                <i class="fa-solid fa-laptop-code"></i>
+                <h3>Giao Diện User</h3>
+            </div>
+            <span class="filepath">UserDashboard.jsx -> TakeQuiz.jsx</span>
+            <div class="function-name">Kiểm tra điều kiện & Chạy setInterval()</div>
+            <p><strong>UserDashboard.jsx</strong> dùng hàm <code>.filter(q => q.isActive)</code> để loại bỏ bài ẩn, khóa nút Start nếu <code>now < startTime</code>.<br/><strong>TakeQuiz.jsx</strong> sử dụng <code>setInterval</code> để đếm lùi thời gian dựa trên <code>endTime</code> của bài thi.</p>
+            
+            <div class="mockup-box" id="user-mockup">
+                <div class="mockup-header">
+                    <strong style="color: #f1f5f9; font-size: 0.9rem;">Thi Học Kỳ I</strong>
+                    <div class="timer-badge" id="mockup-timer"><i class="fa-regular fa-clock"></i> Còn 01:25 phút</div>
+                </div>
+                <div style="font-size: 0.8rem; color: #94a3b8;">
+                    Mở: 08:00 | Đóng: 09:30
+                </div>
+                <div style="margin-top: 10px; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
+                    <div id="progress-bar" style="height: 100%; width: 50%; background: var(--user); transition: width 1s linear;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Node 3: Auto Submit & Lock -->
+        <div class="node" id="node-lock">
+            <div class="step-badge" style="background:var(--lock); color: #fff;">3</div>
+            <div class="node-header">
+                <i class="fa-solid fa-lock"></i>
+                <h3>Hết Giờ (Time's Up)</h3>
+            </div>
+            <span class="filepath" style="font-size: 0.65rem;">TakeQuiz.jsx -> ExamService.java -> RabbitMQ -> ExamProcessorService -> ExamResultRepository -> DB</span>
+            <div class="function-name">Auto Submit & validateQuizTime()</div>
+            <p>
+                <strong>1. Client:</strong> Khi <code>time = 0</code>, <strong>TakeQuiz.jsx</strong> khóa UI (isLocked = true) và gọi API Submit ngầm.<br/>
+                <strong>2. Validate:</strong> <strong>ExamService.java</strong> dùng <code>validateQuizTime()</code> chặn mọi truy cập quá giờ (ngừa tool cheat).<br/>
+                <strong>3. Queue:</strong> Nếu hợp lệ, Service đẩy payload vào <strong>RabbitMQ</strong>.<br/>
+                <strong>4. Repository & DB:</strong> <strong>ExamProcessorService</strong> lấy đáp án từ Redis chấm điểm, gọi <strong>ExamResultRepository.save()</strong> để Hibernate <code>INSERT INTO exam_results</code> lưu vào <strong>PostgreSQL</strong>.
+            </p>
+            
+            <div class="mockup-box" id="lock-mockup">
+                <div class="lock-overlay" id="lock-overlay">
+                    <i class="fa-solid fa-lock" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                    <strong style="font-size: 1.1rem;">BÀI THI ĐÃ KẾT THÚC</strong>
+                    <span style="font-size: 0.8rem; color: #cbd5e1; margin-top: 5px;">Hệ thống đã tự động nộp bài.</span>
+                </div>
+                <div class="mockup-header">
+                    <strong style="color: #f1f5f9; font-size: 0.9rem;">Thi Học Kỳ I</strong>
+                    <div class="timer-badge danger"><i class="fa-regular fa-clock"></i> 00:00 phút</div>
+                </div>
+                <div style="font-size: 0.8rem; color: #94a3b8;">
+                    Mở: 08:00 | Đóng: 09:30
+                </div>
+                <div style="margin-top: 10px; height: 8px; background: #334155; border-radius: 4px;">
+                    <div style="height: 100%; width: 100%; background: #ef4444;"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function updateStatus(text, color = '#fbcfe8') {
+            const bar = document.getElementById('status-bar');
+            bar.style.opacity = '0';
+            setTimeout(() => {
+                bar.innerText = text;
+                bar.style.color = color;
+                bar.style.borderColor = color;
+                bar.style.opacity = '1';
+            }, 300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function simulateFlow() {
+            const btn = document.getElementById('simBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang Mô Phỏng...';
+            
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active-node'));
+            document.getElementById('node-lock').classList.remove('locked');
+            
+            const highlight = (id) => document.getElementById(id).classList.add('active-node');
+            const unhighlight = (id) => document.getElementById(id).classList.remove('active-node');
+            
+            const timerEl = document.getElementById('mockup-timer');
+            const progressEl = document.getElementById('progress-bar');
+
+            // Phase 1: Admin
+            highlight('node-admin');
+            updateStatus('1. Admin kích hoạt bài thi (Active) và hẹn giờ mở-đóng cửa bài thi.', 'var(--admin)');
+            await sleep(3500);
+            unhighlight('node-admin');
+            
+            // Phase 2: User Countdown
+            highlight('node-user');
+            updateStatus('2. Đến giờ! Bài thi xuất hiện trên Dashboard của User. Đồng hồ đếm ngược bắt đầu.', 'var(--user)');
+            
+            // Simulate countdown
+            timerEl.innerHTML = '<i class="fa-regular fa-clock"></i> Còn 00:03 giây';
+            progressEl.style.width = '80%';
+            await sleep(1000);
+            
+            timerEl.classList.add('danger');
+            timerEl.innerHTML = '<i class="fa-regular fa-clock"></i> Còn 00:02 giây';
+            progressEl.style.width = '90%';
+            progressEl.style.background = '#ef4444';
+            await sleep(1000);
+            
+            timerEl.innerHTML = '<i class="fa-regular fa-clock"></i> Còn 00:01 giây';
+            progressEl.style.width = '95%';
+            await sleep(1000);
+            
+            timerEl.innerHTML = '<i class="fa-regular fa-clock"></i> Còn 00:00 giây';
+            progressEl.style.width = '100%';
+            await sleep(500);
+            unhighlight('node-user');
+
+            // Phase 3: Lock & Auto Submit
+            highlight('node-lock');
+            document.getElementById('node-lock').classList.add('locked');
+            updateStatus('3. Hết thời gian! Giao diện ngay lập tức bị khóa (Locked). Trigger hàm tự động Auto-Submit bài thi ngầm.', 'var(--lock)');
+            await sleep(4000);
+            unhighlight('node-lock');
+            
+            updateStatus('⚡ Quy trình Khóa Bài & Thu Bài Tự Động hoàn tất an toàn!', '#e2e8f0');
+            
+            // Reset for next run
+            timerEl.classList.remove('danger');
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Chạy lại giả lập';
+        }
+    </script>
+</body>
+</html>

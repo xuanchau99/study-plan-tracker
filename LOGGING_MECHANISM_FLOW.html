@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ Cơ Chế Quản Lý Log (Logback)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #f59e0b; 
+            --accent-glow: rgba(245, 158, 11, 0.5);
+            --app: #3b82f6;
+            --split: #f59e0b;
+            --archive: #10b981;
+            --code-bg: #0b1120;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #fcd34d, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            z-index: 10;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 800px;
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 10;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #simBtn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #simBtn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(245, 158, 11, 0.6);
+        }
+
+        #simBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #status-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+            color: #fde68a;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 28px;
+            text-align: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            position: relative;
+        }
+
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2; 
+        }
+
+        .node.active-node {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 10px inset var(--accent-glow);
+            transform: scale(1.03) translateY(-5px);
+            z-index: 3;
+        }
+
+        #node-app.active-node { border-color: var(--app); box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+        #node-split.active-node { border-color: var(--split); box-shadow: 0 0 40px rgba(245, 158, 11, 0.5); }
+        #node-archive.active-node { border-color: var(--archive); box-shadow: 0 0 40px rgba(16, 185, 129, 0.5); }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .node-header i {
+            font-size: 2rem;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .node-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .filepath {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(245, 158, 11, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .function-name {
+            font-weight: 600;
+            color: #fde68a;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .node p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .payload-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin-top: 10px;
+            border-left: 3px solid var(--accent);
+        }
+
+        /* Specific node styling */
+        #node-app .node-header i { color: var(--app); }
+        #node-app .filepath { color: var(--app); background: rgba(59, 130, 246, 0.1); }
+        #node-app .function-name { color: #93c5fd; }
+        #node-app .payload-box { color: #93c5fd; border-color: var(--app); }
+        
+        #node-split .node-header i { color: var(--split); }
+        #node-split .filepath { color: var(--split); background: rgba(245, 158, 11, 0.1); }
+        #node-split .function-name { color: #fde68a; }
+        #node-split .payload-box { color: #fde68a; border-color: var(--split); }
+        
+        #node-archive .node-header i { color: var(--archive); }
+        #node-archive .filepath { color: var(--archive); background: rgba(16, 185, 129, 0.1); }
+        #node-archive .function-name { color: #6ee7b7; }
+        #node-archive .payload-box { color: #6ee7b7; border-color: var(--archive); }
+
+        .step-badge {
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            background: var(--accent);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--card-bg);
+            z-index: 10;
+        }
+
+        /* Placement in Grid */
+        #node-app { grid-column: 1; grid-row: 1; border-color: rgba(59, 130, 246, 0.5); }
+        #node-split { grid-column: 2; grid-row: 1; border-color: rgba(245, 158, 11, 0.5); }
+        #node-archive { grid-column: 3; grid-row: 1; border-color: rgba(16, 185, 129, 0.5); }
+
+    </style>
+</head>
+<body>
+
+    <h1>Sơ Đồ Cơ Chế Rolling Log</h1>
+    <p class="subtitle">Giải thích cơ chế cắt file Log theo Ngày (Daily) và theo Dung Lượng (Max Size) cấu hình trong file <code>logback-spring.xml</code>.</p>
+
+    <div class="controls">
+        <button id="simBtn" onclick="simulateFlow()">
+            <i class="fa-solid fa-play"></i> Mô phỏng sinh File Log
+        </button>
+        <div id="status-bar">Đang chờ hệ thống phát sinh Log...</div>
+    </div>
+
+    <div class="flow-container">
+        
+        <!-- Node 1: Application -->
+        <div class="node" id="node-app">
+            <div class="step-badge" style="background:var(--app);">1</div>
+            <div class="node-header">
+                <i class="fa-solid fa-terminal"></i>
+                <h3>Application Logging</h3>
+            </div>
+            <span class="filepath" style="font-size: 0.65rem;">Controller -> Service -> Repository -> SLF4J -> Logback</span>
+            <div class="function-name">Phát sinh Log Đa Tầng</div>
+            <p>Tất cả các tầng <strong>Controller</strong> (tiếp nhận API), <strong>Service</strong> (chứa Business Logic), và <strong>Repository</strong> (truy vấn DB/Hibernate) đều sử dụng <code>log.info</code>, <code>log.error</code> của SLF4J để đẩy luồng dữ liệu tập trung vào Appender.</p>
+            <div class="payload-box">
+2026-09-11 20:20:01 INFO - User created
+2026-09-11 20:20:05 WARN - High CPU
+... (hàng triệu dòng log)
+            </div>
+        </div>
+
+        <!-- Node 2: Size & Time Based -->
+        <div class="node" id="node-split">
+            <div class="step-badge" style="background:var(--split);">2</div>
+            <div class="node-header">
+                <i class="fa-solid fa-file-lines"></i>
+                <h3>Cắt File (Rolling Policy)</h3>
+            </div>
+            <span class="filepath">SizeAndTimeBasedRollingPolicy</span>
+            <div class="function-name">Tách theo Ngày + Size 10MB</div>
+            <p>Hệ thống tự động theo dõi. Nếu sang ngày mới, hoặc file log hiện tại đạt đến ngưỡng <code>10MB</code>, nó sẽ tạo file mới với hậu tố <code>%i</code>.</p>
+            <div class="payload-box">
+<maxFileSize>10MB</maxFileSize>
+
+quiz-system-2026-09-11.0.log (10MB)
+quiz-system-2026-09-11.1.log (10MB)
+quiz-system-2026-09-11.2.log (Đang ghi)
+            </div>
+        </div>
+
+        <!-- Node 3: Archive Retention -->
+        <div class="node" id="node-archive">
+            <div class="step-badge" style="background:var(--archive); color: #000;">3</div>
+            <div class="node-header">
+                <i class="fa-solid fa-trash-can"></i>
+                <h3>Dọn Dẹp Rác Tự Động</h3>
+            </div>
+            <span class="filepath">maxHistory & totalSizeCap</span>
+            <div class="function-name">Tránh tràn ổ cứng (Disk Full)</div>
+            <p>Chỉ lưu trữ các file log của 30 ngày gần nhất. Hoặc nếu tổng dung lượng tất cả các file log vượt quá <code>1GB</code> thì sẽ tự xóa file cũ nhất.</p>
+            <div class="payload-box">
+<maxHistory>30</maxHistory>
+<totalSizeCap>1GB</totalSizeCap>
+
+// Tự động xóa log của tháng trước
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function updateStatus(text, color = '#fde68a') {
+            const bar = document.getElementById('status-bar');
+            bar.style.opacity = '0';
+            setTimeout(() => {
+                bar.innerText = text;
+                bar.style.color = color;
+                bar.style.borderColor = color;
+                bar.style.opacity = '1';
+            }, 300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function simulateFlow() {
+            const btn = document.getElementById('simBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang Mô Phỏng...';
+            
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active-node'));
+            
+            const highlight = (id) => document.getElementById(id).classList.add('active-node');
+            const unhighlight = (id) => document.getElementById(id).classList.remove('active-node');
+
+            // Phase 1
+            highlight('node-app');
+            updateStatus('1. Hệ thống hoạt động và ghi log vào file chung liên tục...', 'var(--app)');
+            await sleep(3000);
+            unhighlight('node-app');
+            
+            // Phase 2
+            highlight('node-split');
+            updateStatus('2. File đạt mức 10MB! Logback đóng file hiện tại và tự động tạo file .1.log mới để ghi tiếp.', 'var(--split)');
+            await sleep(3500);
+            updateStatus('3. Sang ngày mới! Logback tự động đổi tên file theo định dạng %d{yyyy-MM-dd}.', 'var(--split)');
+            await sleep(3000);
+            unhighlight('node-split');
+
+            // Phase 3
+            highlight('node-archive');
+            updateStatus('4. Tổng dung lượng Log vượt mức 1GB, hệ thống tự động xóa các file log cũ nhất để tránh sập ổ cứng.', 'var(--archive)');
+            await sleep(3500);
+            unhighlight('node-archive');
+            
+            updateStatus('⚡ Quy trình Rolling File hoàn tất, Server được bảo vệ an toàn!', '#e2e8f0');
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Chạy lại giả lập';
+        }
+    </script>
+</body>
+</html>

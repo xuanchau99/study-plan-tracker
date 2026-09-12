@@ -320,9 +320,9 @@ Authorization: Bearer eyJhbGci...
                 <i class="fa-solid fa-key"></i>
                 <h3>API Đăng Nhập</h3>
             </div>
-            <span class="filepath">.../security/JwtUtil.java</span>
+            <span class="filepath" style="font-size: 0.65rem;">AuthController -> AuthenticationManager -> UserRepository -> DB</span>
             <div class="function-name">generateToken(username)</div>
-            <p>Xác thực User/Pass qua DB. Sau đó xuất chuỗi JWT bằng Secret Key và trả về.</p>
+            <p><strong>Controller</strong> gọi <strong>Service</strong> truy vấn DB kiểm tra User/Pass. Trùng khớp thì xuất chuỗi JWT bằng Secret Key và trả về.</p>
             <div class="payload-box">
 String jwt = Jwts.builder()
   .setSubject(user.getUsername())
@@ -358,9 +358,9 @@ filterChain.doFilter(req, res);
                 <i class="fa-solid fa-lock-open"></i>
                 <h3>API Nội Bộ (Protected)</h3>
             </div>
-            <span class="filepath">.../controller/QuizController.java</span>
+            <span class="filepath" style="font-size: 0.65rem;">QuizController.java -> QuizService.java -> QuizRepository.java -> DB</span>
             <div class="function-name">@GetMapping("/quizzes")</div>
-            <p>Chỉ được gọi khi Filter cấp quyền qua. Nhận request và trả về Dữ liệu bảo mật.</p>
+            <p>Chỉ được gọi khi <strong>Filter</strong> cấp quyền qua. Mọi lệnh truy xuất đến <strong>Repository</strong> lúc này là an toàn tuyệt đối.</p>
             <div class="payload-box">
 // Controller hoàn toàn tin tưởng Filter
 return quizRepository.findAll();

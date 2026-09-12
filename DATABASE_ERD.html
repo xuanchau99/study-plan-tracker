@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ ERD Database Cơ Sở Dữ Liệu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#1e293b',
+                primaryTextColor: '#f8fafc',
+                primaryBorderColor: '#3b82f6',
+                lineColor: '#94a3b8',
+                secondaryColor: '#ef4444',
+                tertiaryColor: '#10b981',
+                fontFamily: 'Fira Code, monospace',
+            },
+            er: {
+                layoutDirection: 'LR',
+                minEntityWidth: 150,
+                minEntityHeight: 75,
+                entityPadding: 15,
+                stroke: '#3b82f6',
+                fill: '#0f172a'
+            }
+        });
+    </script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #8b5cf6; 
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #c4b5fd, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .mermaid-container {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 1200px;
+            overflow-x: auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        .mermaid svg {
+            min-width: 800px;
+            width: 100%;
+            height: auto;
+            max-width: none !important;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 40px;
+        }
+
+        .detail-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .detail-card h3 {
+            margin-top: 0;
+            color: #c4b5fd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .wide-card {
+            grid-column: 1 / -1;
+        }
+
+        .code-snippet {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #6ee7b7;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            border-left: 3px solid #ef4444;
+        }
+
+        .detail-card ul {
+            padding-left: 20px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .detail-card li strong {
+            color: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Sơ Đồ Thực Thể Kết Hợp (ERD)</h1>
+    <p class="subtitle">Trực quan hóa cấu trúc Database, các Table, Khóa Chính (PK), Khóa Ngoại (FK) và mối quan hệ giữa chúng trong dự án Quiz System.</p>
+
+    <div class="mermaid-container">
+        <div class="mermaid">
+            erDiagram
+                users {
+                    Long id PK "Khóa chính tự tăng"
+                    String username UK "Unique, có Index idx_username"
+                    String password 
+                    String role "Enum: ADMIN/USER"
+                    LocalDateTime created_at 
+                }
+
+                quizzes {
+                    Long id PK "Khóa chính tự tăng"
+                    String title "Có Index idx_quiz_title"
+                    Text description 
+                    LocalDateTime created_at 
+                }
+
+                questions {
+                    Long id PK "Khóa chính tự tăng"
+                    Long quiz_id FK "Liên kết tới quizzes"
+                    JSONB details "Chứa cấu trúc động"
+                    String type 
+                    String correct_answer 
+                }
+
+                exam_results {
+                    Long id PK "Khóa chính tự tăng"
+                    Long user_id FK "Liên kết tới users (logical)"
+                    Long quiz_id FK "Liên kết tới quizzes (logical)"
+                    Integer score 
+                    LocalDateTime submitted_at 
+                    JSONB evidence "Lưu lại đáp án đã chọn"
+                }
+
+                notifications {
+                    Long id PK "Khóa chính tự tăng"
+                    Long user_id FK "Liên kết tới users"
+                    String message 
+                    Boolean is_read 
+                    LocalDateTime created_at 
+                }
+
+                %% Relationships
+                users ||--o{ notifications : "nhận (1-N)"
+                users ||--o{ exam_results : "làm bài (1-N)"
+                quizzes ||--o{ questions : "có (1-N)"
+                quizzes ||--o{ exam_results : "có kết quả (1-N)"
+        </div>
+    </div>
+
+    <div class="details-grid">
+        <div class="detail-card">
+            <h3><i class="fa-solid fa-key"></i> Phân Tích Khóa & Ràng Buộc</h3>
+            <ul>
+                <li><strong>Khóa chính (PK):</strong> Tất cả các bảng đều sử dụng <code>id</code> (Kiểu Long) với chiến lược sinh tự động <code>GenerationType.IDENTITY</code>.</li>
+                <li><strong>Khóa ngoại (FK) tường minh:</strong> <code>questions.quiz_id</code> và <code>notifications.user_id</code> được ánh xạ <code>@ManyToOne(fetch = FetchType.LAZY)</code>.</li>
+                <li><strong>Khóa ngoại (FK) logic:</strong> Bảng <code>exam_results</code> chứa <code>user_id</code> và <code>quiz_id</code> nhưng không khai báo <code>@ManyToOne</code> trực tiếp trong JPA entity, chỉ lưu ID để tối ưu truy vấn độc lập (Decoupled).</li>
+            </ul>
+        </div>
+        <div class="detail-card">
+            <h3><i class="fa-solid fa-bolt"></i> Tối Ưu Hóa & Indexing</h3>
+            <ul>
+                <li><strong>B-Tree Index:</strong> Bảng <code>users</code> được đánh index và unique ràng buộc trên cột <code>username</code>. Bảng <code>quizzes</code> được đánh index trên <code>title</code>.</li>
+                <li><strong>NoSQL JSONB:</strong> Áp dụng trên <code>questions.details</code> (lưu đa dạng loại câu hỏi) và <code>exam_results.evidence</code> (lưu log làm bài), loại bỏ nhu cầu phải tạo thêm nhiều bảng phụ và quan hệ phức tạp.</li>
+            </ul>
+        </div>
+        <div class="detail-card wide-card">
+            <h3><i class="fa-solid fa-layer-group"></i> Ứng dụng Thực Tế Của Spring Data JPA & Hibernate Trong Dự Án</h3>
+            <p style="color: var(--text-muted); margin-top: 0; margin-bottom: 20px; font-size: 0.95rem;">Dự án kết hợp khéo léo 90% tính năng chuẩn hóa của JPA và 10% sức mạnh mở rộng của Hibernate vào các chức năng cốt lõi:</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
+                <div>
+                    <strong style="color: #93c5fd; font-size: 1.1rem; display: block; margin-bottom: 10px;"><i class="fa-brands fa-java"></i> Spring Data JPA (Tiêu chuẩn)</strong>
+                    <ul style="margin-top: 0;">
+                        <li><strong>Map cấu trúc DB (Entity Mapping):</strong> Áp dụng tại toàn bộ các bảng. Dùng <code>@Entity</code>, <code>@Table</code>, <code>@Id</code> (thuộc package <code>jakarta.persistence</code>) để tự động ánh xạ Java Class thành Table PostgreSQL mà không cần viết SQL DDL.</li>
+                        <li><strong>Thiết lập Quan hệ (Relationships):</strong> Tại bảng Questions và ExamResult. Dùng <code>@ManyToOne(fetch = FetchType.LAZY)</code> thiết lập khóa ngoại. Chế độ LAZY giúp tối ưu hiệu năng (chỉ load khi thực sự cần).</li>
+                        <li><strong>Truy vấn (CRUD) rút gọn:</strong> Áp dụng trong package <code>repository</code>. Kế thừa <code>JpaRepository</code> giúp gọi hàm <code>findByUsername</code> là tự động sinh SQL tra cứu dữ liệu đăng nhập.</li>
+                    </ul>
+                </div>
+                <div>
+                    <strong style="color: #fca5a5; font-size: 1.1rem; display: block; margin-bottom: 10px;"><i class="fa-solid fa-fire"></i> Hibernate (Core & Tính năng độc quyền)</strong>
+                    <ul style="margin-top: 0;">
+                        <li><strong>Lưu trữ JSONB đa hình:</strong> Áp dụng trong tính năng trộn cấu trúc đa dạng của đề thi/câu hỏi. JPA thuần không hỗ trợ, dự án gọi thẳng công cụ riêng của Hibernate:
+                            <div class="code-snippet">import org.hibernate.annotations.JdbcTypeCode;
+
+@JdbcTypeCode(SqlTypes.JSON)
+@Column(columnDefinition = "jsonb")
+private QuestionDetails details;</div>
+                        </li>
+                        <li><strong>Bắt sự kiện vòng đời (Entity Lifecycle):</strong> Áp dụng cho tính năng ghi log chấm thi tự động. Kích hoạt annotation ngầm định <code>@PrePersist</code> để tự động gán <code>submittedAt = LocalDateTime.now()</code> ngay trước khi lệnh INSERT SQL được thực thi.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

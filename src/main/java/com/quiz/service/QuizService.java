@@ -28,6 +28,9 @@ public class QuizService {
     @Transactional
     public QuizDto createQuiz(QuizCreateRequest request) {
         Quiz quiz = new Quiz(request.title(), request.description());
+        quiz.setIsActive(request.isActive() != null ? request.isActive() : false);
+        quiz.setStartTime(request.startTime());
+        quiz.setEndTime(request.endTime());
 
         request.questions().forEach(qRequest -> {
             Question question = new Question(
@@ -73,7 +76,10 @@ public class QuizService {
                 quiz.getTitle(),
                 quiz.getDescription(),
                 quiz.getCreatedAt(),
-                questionDtos
+                questionDtos,
+                quiz.getIsActive(),
+                quiz.getStartTime(),
+                quiz.getEndTime()
         );
     }
 }

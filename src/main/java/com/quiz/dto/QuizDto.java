@@ -8,6 +8,9 @@ public record QuizDto(
         String title,
         String description,
         LocalDateTime createdAt,
-        List<QuestionDto> questions
+        List<QuestionDto> questions,
+        Boolean isActive,
+        LocalDateTime startTime,
+        LocalDateTime endTime
 ) {
 }

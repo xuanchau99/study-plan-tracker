@@ -17,6 +17,9 @@ export default function AdminDashboard({ user, setUser }) {
   const [quizTitle, setQuizTitle] = useState('');
   const [loadingGen, setLoadingGen] = useState(false);
   const [message, setMessage] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -118,6 +121,9 @@ export default function AdminDashboard({ user, setUser }) {
       const payload = {
         title: quizTitle.trim() !== '' ? quizTitle : `English Proficiency Test - ${numQuestions} Questions`,
         description: `Auto-generated test focusing on grammar and vocabulary.`,
+        isActive,
+        startTime: startTime || null,
+        endTime: endTime || null,
         questions
       };
 
@@ -186,6 +192,36 @@ export default function AdminDashboard({ user, setUser }) {
                 type="number" min="1" max="1000" className="input-field" 
                 value={numQuestions} onChange={e => setNumQuestions(Number(e.target.value))} required 
               />
+            </div>
+            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 15, marginBottom: 15 }}>
+              <input 
+                type="checkbox" 
+                id="isActive"
+                checked={isActive} 
+                onChange={e => setIsActive(e.target.checked)} 
+                style={{ width: 18, height: 18, cursor: 'pointer' }}
+              />
+              <label htmlFor="isActive" style={{ margin: 0, cursor: 'pointer' }}>Active (Visible to users)</label>
+            </div>
+            <div style={{ display: 'flex', gap: 15, marginBottom: 15 }}>
+              <div className="form-group" style={{ flex: 1, position: 'relative' }}>
+                <label>Start Time (Optional)</label>
+                <input 
+                  type="datetime-local" className="input-field" 
+                  value={startTime} onChange={e => setStartTime(e.target.value)} 
+                  onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                  style={{ cursor: 'pointer' }}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1, position: 'relative' }}>
+                <label>End Time (Optional)</label>
+                <input 
+                  type="datetime-local" className="input-field" 
+                  value={endTime} onChange={e => setEndTime(e.target.value)} 
+                  onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                  style={{ cursor: 'pointer' }}
+                />
+              </div>
             </div>
             <button type="submit" className="btn-primary" disabled={loadingGen}>
               {loadingGen ? <Loader2 className="lucide-spin" size={18} /> : <PlusCircle size={18} />}

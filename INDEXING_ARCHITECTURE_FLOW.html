@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sơ Đồ Kiến Trúc Đánh Index</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6; 
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --success: #10b981;
+            --redis: #ef4444;
+            --postgres: #3b82f6; 
+            --jsonb: #10b981;
+            --code-bg: #0b1120;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #93c5fd, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            z-index: 10;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 800px;
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 10;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #simBtn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #simBtn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
+        }
+
+        #simBtn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #status-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 28px;
+            text-align: center;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .flow-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            position: relative;
+        }
+
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2; 
+        }
+
+        .node.active-node {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 10px inset var(--accent-glow);
+            transform: scale(1.03) translateY(-5px);
+            z-index: 3;
+        }
+
+        #node-postgres.active-node { border-color: #3b82f6; box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+        #node-redis.active-node { border-color: #ef4444; box-shadow: 0 0 40px rgba(239, 68, 68, 0.5); }
+        #node-jsonb.active-node { border-color: #10b981; box-shadow: 0 0 40px rgba(16, 185, 129, 0.5); }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .node-header i {
+            font-size: 2rem;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .node-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .filepath {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .function-name {
+            font-weight: 600;
+            color: #93c5fd;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .node p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .payload-box {
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        /* Specific node styling */
+        #node-postgres .node-header i { color: var(--postgres); }
+        #node-postgres .filepath { color: var(--postgres); background: rgba(59, 130, 246, 0.1); }
+        #node-postgres .function-name { color: #93c5fd; }
+        #node-postgres .payload-box { color: #93c5fd; }
+        
+        #node-redis .node-header i { color: var(--redis); }
+        #node-redis .filepath { color: var(--redis); background: rgba(239, 68, 68, 0.1); }
+        #node-redis .function-name { color: #fca5a5; }
+        #node-redis .payload-box { color: #fca5a5; }
+        
+        #node-jsonb .node-header i { color: var(--jsonb); }
+        #node-jsonb .filepath { color: var(--jsonb); background: rgba(16, 185, 129, 0.1); }
+        #node-jsonb .function-name { color: #6ee7b7; }
+        #node-jsonb .payload-box { color: #6ee7b7; }
+
+        .step-badge {
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            background: var(--accent);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--card-bg);
+            z-index: 10;
+        }
+
+        /* Placement in Grid */
+        #node-postgres { grid-column: 1; grid-row: 1; border-color: rgba(59, 130, 246, 0.5); }
+        #node-redis { grid-column: 2; grid-row: 1; border-color: rgba(239, 68, 68, 0.5); }
+        #node-jsonb { grid-column: 3; grid-row: 1; border-color: rgba(16, 185, 129, 0.5); }
+
+    </style>
+</head>
+<body>
+
+    <h1>Sơ Đồ Đa Kiến Trúc Indexing</h1>
+    <p class="subtitle">Mô phỏng 3 kỹ thuật lập chỉ mục (Indexing) đang được ứng dụng trong dự án: B-Tree truyền thống, In-Memory Index siêu tốc, và NoSQL JSONB Index.</p>
+
+    <div class="controls">
+        <button id="simBtn" onclick="simulateFlow()">
+            <i class="fa-solid fa-play"></i> Xem Giả Lập Hoạt Động Của Index
+        </button>
+        <div id="status-bar">Chờ lệnh giả lập tìm kiếm và cập nhật dữ liệu...</div>
+    </div>
+
+    <div class="flow-container">
+        
+        <!-- Node 1: PostgreSQL B-Tree -->
+        <div class="node" id="node-postgres">
+            <div class="step-badge" style="background:var(--postgres);">1</div>
+            <div class="node-header">
+                <i class="fa-solid fa-database"></i>
+                <h3>B-Tree Index (PostgreSQL)</h3>
+            </div>
+            <span class="filepath">@Table(indexes = { @Index(...) })</span>
+            <div class="function-name">Tìm kiếm User, Quiz -> O(log n)</div>
+            <p>Sử dụng JPA Indexing để tạo B-Tree trên các cột thường xuyên tìm kiếm (ví dụ: username, title). Giúp tra cứu hàng triệu bản ghi không bị Full Table Scan.</p>
+            <div class="payload-box">
+@Index(name="idx_username", 
+       columnList="username", 
+       unique=true)
+// Tránh trùng lặp username
+// Tăng tốc findByUsername
+            </div>
+        </div>
+
+        <!-- Node 2: Redis In-Memory -->
+        <div class="node" id="node-redis">
+            <div class="step-badge" style="background:var(--redis);">2</div>
+            <div class="node-header">
+                <i class="fa-solid fa-bolt"></i>
+                <h3>In-Memory Index (Redis Hash)</h3>
+            </div>
+            <span class="filepath">redisTemplate.opsForHash()</span>
+            <div class="function-name">Tracking High-Throughput -> O(1)</div>
+            <p>Dữ liệu cập nhật liên tục (như Heartbeat Task) không đánh index ở DB mà dùng key `taskId` tra cứu thẳng trên RAM. Sau đó mới Sync ngầm xuống DB.</p>
+            <div class="payload-box">
+HINCRBY daily_task_progress 
+        {taskId} 1
+
+// Redis Hash là một In-Memory Index
+// Tốc độ phản hồi: ~1ms
+            </div>
+        </div>
+
+        <!-- Node 3: PostgreSQL JSONB -->
+        <div class="node" id="node-jsonb">
+            <div class="step-badge" style="background:var(--jsonb); color: #000;">3</div>
+            <div class="node-header">
+                <i class="fa-solid fa-layer-group"></i>
+                <h3>Bán Cấu Trúc (JSONB)</h3>
+            </div>
+            <span class="filepath">@JdbcTypeCode(SqlTypes.JSON)</span>
+            <div class="function-name">Dữ liệu động (Details, Evidence)</div>
+            <p>Thay vì tạo chục bảng phụ và đánh vô số Index Khóa ngoại (Join), ta lưu nguyên cục JSON. PostgreSQL dùng GIN Index hỗ trợ query trực tiếp vào Object JSONB.</p>
+            <div class="payload-box">
+@Column(columnDefinition="jsonb")
+private QuestionDetails details;
+
+// Gộp chung cấu trúc câu hỏi
+// Không cần JOIN nhiều bảng
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function updateStatus(text, color = '#93c5fd') {
+            const bar = document.getElementById('status-bar');
+            bar.style.opacity = '0';
+            setTimeout(() => {
+                bar.innerText = text;
+                bar.style.color = color;
+                bar.style.borderColor = color;
+                bar.style.opacity = '1';
+            }, 300);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function simulateFlow() {
+            const btn = document.getElementById('simBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang Giả Lập...';
+            
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active-node'));
+            
+            const highlight = (id) => document.getElementById(id).classList.add('active-node');
+            const unhighlight = (id) => document.getElementById(id).classList.remove('active-node');
+
+            // Phase 1: B-Tree
+            highlight('node-postgres');
+            updateStatus('1. Tìm kiếm User bằng Username qua B-Tree Index. Nhanh chóng định vị record nhờ thuật toán O(log n).', '#3b82f6');
+            await sleep(3500);
+            unhighlight('node-postgres');
+            
+            // Phase 2: Redis
+            highlight('node-redis');
+            updateStatus('2. Nhận hàng nghìn Request Heartbeat: Chuyển hướng lưu vào RAM (Redis Hash) qua cơ chế In-Memory Index O(1).', '#ef4444');
+            await sleep(3500);
+            unhighlight('node-redis');
+
+            // Phase 3: JSONB
+            highlight('node-jsonb');
+            updateStatus('3. Lấy cấu trúc câu hỏi linh hoạt. Tránh được hàng chục câu lệnh JOIN nhờ kiểu dữ liệu NoSQL JSONB.', '#10b981');
+            await sleep(3500);
+            unhighlight('node-jsonb');
+            
+            updateStatus('⚡ Hoàn tất mô phỏng các kiến trúc Indexing đang có trong hệ thống.', '#e2e8f0');
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Chạy lại giả lập';
+        }
+
+    </script>
+</body>
+</html>

@@ -333,11 +333,9 @@
             <div class="function-name">fetchApi()</div>
             <p>Mỗi khi user thay đổi đáp án, Frontend bắn ngầm request lưu tự động.</p>
             <div class="payload-box">
-fetchApi(`/exams/${quizId}/...`, {
+fetchApi(`/api/v1/exams/${quizId}/...`, {
   method: 'POST',
-  body: JSON.stringify({
-    answer: "C"
-  })
+  body: JSON.stringify({ answer: "C" })
 });
             </div>
         </div>
@@ -349,9 +347,9 @@ fetchApi(`/exams/${quizId}/...`, {
                 <i class="fa-solid fa-server"></i>
                 <h3>ExamController (Spring)</h3>
             </div>
-            <span class="filepath">.../controller/ExamController.java</span>
-            <div class="function-name">@PostMapping(...)<br>public ResponseEntity autoSave(...)</div>
-            <p>Nhận kết quả và gọi Service. Tuyệt đối không gọi tới JPA Repository.</p>
+            <span class="filepath" style="font-size: 0.65rem;">TakeQuiz.jsx -> ExamController.java -> ExamService.java</span>
+            <div class="function-name">Controller & Service Layer</div>
+            <p><strong>1. Controller:</strong> Tiếp nhận request POST từ Client.<br/><strong>2. Service:</strong> <code>ExamService</code> xử lý logic xác thực, điều hướng luồng mà <strong>tuyệt đối không gọi tới JpaRepository</strong>.</p>
             <div class="payload-box">
 examService.autoSaveAnswer(
   userId, quizId, qId, req.getAnswer()
@@ -367,9 +365,9 @@ return ResponseEntity.ok().build();
                 <i class="fa-solid fa-database"></i>
                 <h3>Redis Hash (RAM)</h3>
             </div>
-            <span class="filepath">.../service/ExamService.java</span>
-            <div class="function-name">redisTemplate.opsForHash().put(...)</div>
-            <p>Ghi đè đáp án thẳng vào RAM (O(1)). Bất chấp hàng triệu request.</p>
+            <span class="filepath" style="font-size: 0.65rem;">ExamService.java -> RedisTemplate -> Redis Server (RAM)</span>
+            <div class="function-name">Data Access Layer (In-Memory)</div>
+            <p><strong>3. Cache Layer:</strong> <code>ExamService</code> gọi <code>redisTemplate</code> đẩy dữ liệu thẳng vào RAM (O(1)), bỏ qua hoàn toàn bước tương tác với Ổ cứng.</p>
             <div class="payload-box">
 String key = "exam:" + quizId + ...;
 redisTemplate.opsForHash().put(
@@ -388,6 +386,26 @@ redisTemplate.opsForHash().put(
             <p>Vì ghi ổ cứng Disk I/O rất chậm, nếu Auto-save bằng DB dưới hàng nghìn request, hệ thống sẽ sụp đổ (Timeout).</p>
         </div>
 
+    </div>
+
+    <div class="details-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1400px; margin-top: 40px; margin-bottom: 40px;">
+        <div class="detail-card" style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 16px; padding: 25px;">
+            <h3 style="margin-top: 0; color: #fca5a5; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;"><i class="fa-solid fa-rotate-right"></i> Cơ Chế Phục Hồi Dữ Liệu (Reload Data)</h3>
+            <ul style="padding-left: 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 0;">
+                <li><strong style="color: #f8fafc;">Lỡ tay đóng Tab/Trình duyệt, Cúp điện:</strong> Các đáp án mà học sinh đã chọn vẫn được lưu trữ nguyên vẹn trên RAM của server thông qua Redis. Nó không bị mất đi dù trình duyệt bị đóng cái rụp.</li>
+                <li><strong style="color: #f8fafc;">Quá trình Load lại (Merge Data):</strong> Khi học sinh mở lại tab và truy cập vào đúng đường dẫn bài thi, Frontend sẽ gọi API lấy đề bài <code>GET /exams/{quizId}</code>. Tại Backend, hệ thống không chỉ móc cấu trúc đề từ PostgreSQL, mà còn chủ động <strong>chọc vào Redis</strong> bằng lệnh <code>HGETALL exam:{quizId}</code> để lấy ra toàn bộ danh sách đáp án học sinh đã click trước đó.</li>
+                <li><strong style="color: #f8fafc;">Phục hồi Giao diện:</strong> API trả về dữ liệu gộp. Giao diện React nhận được sẽ tự động lấp đầy và đánh dấu tick (checked) lại vào các ô radio/checkbox chính xác y hệt như trạng thái cuối cùng. Học sinh có thể làm tiếp bài ngay lập tức.</li>
+            </ul>
+        </div>
+        
+        <div class="detail-card" style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 16px; padding: 25px;">
+            <h3 style="margin-top: 0; color: #fca5a5; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;"><i class="fa-solid fa-hard-drive"></i> Quá Trình Lưu Cứng Cuối Cùng (Hard Save)</h3>
+            <ul style="padding-left: 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 0;">
+                <li><strong style="color: #f8fafc;">Sự kiện Nộp Bài (Submit):</strong> Dữ liệu không nằm trên RAM mãi mãi. Khi học sinh bấm nút "Nộp Bài" (hoặc khi đồng hồ đếm ngược kết thúc, tự động nộp), hệ thống mới kích hoạt luồng <strong>Hard-save</strong> duy nhất.</li>
+                <li><strong style="color: #f8fafc;">Đồng bộ xuống PostgreSQL (Hibernate):</strong> Luồng đi lúc này sẽ là: <code style="color:#fca5a5; font-size:0.8rem">TakeQuiz.jsx -> ExamController -> ExamService -> RabbitMQ -> ExamProcessorService -> ExamResultRepository -> PostgreSQL</code>. Cụ thể, Backend lôi toàn bộ đáp án cuối cùng từ Redis ra, chấm điểm, sau đó gọi <code>ExamResultRepository.save()</code> để <strong>Hibernate</strong> sinh lệnh <code>INSERT INTO exam_results</code> ghi <strong>một lần duy nhất</strong> xuống DB.</li>
+                <li><strong style="color: #f8fafc;">Dọn dẹp RAM (Eviction):</strong> Khi quá trình lưu cứng hoàn tất thành công, hệ thống sẽ gọi lệnh <code>DEL exam:{quizId}</code> trên Redis để dọn dẹp bộ đệm, giải phóng dung lượng RAM đắt đỏ cho các phiên thi tiếp theo.</li>
+            </ul>
+        </div>
     </div>
 
     <script>

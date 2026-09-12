@@ -361,9 +361,9 @@ SecurityContextHolder.getContext().setAuthentication(auth);
                 <i class="fa-solid fa-lock"></i>
                 <h3>Bảo Vệ API</h3>
             </div>
-            <span class="filepath">.../controller/AdminController.java</span>
+            <span class="filepath" style="font-size: 0.65rem;">AdminController.java -> AdminService.java -> UserRepository.java -> DB</span>
             <div class="function-name">@PreAuthorize("hasRole('ADMIN')")</div>
-            <p>Annotation này chặn mọi request. Nó kiểm tra SecurityContext, nếu có ROLE_ADMIN thì cho gọi hàm, không thì trả về 403 Forbidden.</p>
+            <p>Annotation kiểm tra SecurityContext. Có ROLE_ADMIN mới được cấp phép đi sâu vào tầng <strong>Service</strong> và lấy dữ liệu từ <strong>Repository</strong>.</p>
             <div class="payload-box">
 @PreAuthorize("hasRole('ADMIN')")
 @GetMapping("/admin/users")

@@ -14,6 +14,12 @@ public record QuizCreateRequest(
 
         @NotEmpty(message = "Quiz must have at least one question")
         @Valid
-        List<QuestionCreateRequest> questions
+        List<QuestionCreateRequest> questions,
+
+        Boolean isActive,
+        
+        java.time.LocalDateTime startTime,
+        
+        java.time.LocalDateTime endTime
 ) {
 }
